@@ -27,6 +27,7 @@ let STATE = {
   config: {
     storeName:"Sabor Direto",
     deliveryFee:6.0,
+    deliveryFees: [],
     isOpen:true,
     adminPassword:"admin123",
     categories:["Lanches","Bebidas","Sobremesas"],
@@ -58,6 +59,23 @@ function showToast(msg){
   window._toastTimer = setTimeout(()=>t.classList.remove("show"), 2400);
 }
 
+/* ---------- cores suaves por categoria (identificação visual) ---------- */
+const CATEGORY_PALETTE = [
+  {bg:"#EAE3F7", text:"#6B3FA6"},
+  {bg:"#DCEFE9", text:"#1F9E86"},
+  {bg:"#FBE3E3", text:"#C24B4B"},
+  {bg:"#E0EEF9", text:"#3A76A6"},
+  {bg:"#F3E3EE", text:"#A6479A"},
+  {bg:"#EFEFDA", text:"#8A8A3E"}
+];
+const COMBO_COLOR = {bg:"#FBEBC7", text:"#9A6A0E"};
+function getCategoryColor(name){
+  if(name === "Combos") return COMBO_COLOR;
+  let hash = 0;
+  for(let i=0;i<name.length;i++){ hash = (hash*31 + name.charCodeAt(i)) >>> 0; }
+  return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
+
 /* ---------- promoções: ajuda de validade ---------- */
 function isPromotionActive(promo){
   if(!promo.active) return false;
@@ -76,6 +94,7 @@ function buildWhatsAppMessage(order){
   lines.push(`Cliente: ${order.customerName}`);
   lines.push(`Telefone: ${order.phone}`);
   lines.push(`Endereço: ${order.address}`);
+  if(order.bairro) lines.push(`Bairro: ${order.bairro}`);
   lines.push("");
   lines.push("Itens:");
   order.items.forEach(it=>{
@@ -106,7 +125,7 @@ function loadLocal(){
     if(raw){
       const parsed = JSON.parse(raw);
       STATE = Object.assign({combos:[], promotions:[], users:[]}, parsed);
-      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true}, STATE.config);
+      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[]}, STATE.config);
     }
     else { seedDemoData(); saveLocal(); }
   }catch(e){ seedDemoData(); }

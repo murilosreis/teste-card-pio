@@ -28,18 +28,34 @@
 .store-status .pill{background:rgba(255,255,255,.14);color:var(--white);}
 .store-status .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;}
 
-/* faixa de promoções */
-.promo-bar{background:var(--gold-100);padding:14px 0;border-bottom:1px solid var(--gray-200);}
-.promo-bar-inner{display:flex;gap:12px;overflow-x:auto;padding:0 20px;scrollbar-width:none;}
-.promo-bar-inner::-webkit-scrollbar{display:none;}
-.promo-card{flex-shrink:0;width:190px;background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;}
-.promo-card img{width:100%;height:110px;object-fit:cover;background:var(--gray-100);}
-.promo-img-placeholder{width:100%;height:110px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:28px;}
-.promo-body{padding:10px 12px 12px;}
-.promo-title{font-weight:700;font-size:13.5px;margin-bottom:4px;line-height:1.3;}
-.promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:14px;}
+/* carrossel de promoções em destaque */
+.promo-section{background:linear-gradient(135deg, var(--purple-700), var(--purple-900));padding:26px 0 22px;position:relative;overflow:hidden;}
+.promo-section::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(135deg, transparent 46%, rgba(227,167,46,.35) 46% 54%, transparent 54%);
+  background-size:100px 100px;opacity:.35;
+}
+.promo-heading{display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative;z-index:1;}
+.promo-flame{font-size:26px;line-height:1;}
+.promo-heading h2{color:var(--white);font-size:19px;margin-bottom:2px;}
+.promo-heading p{color:var(--gold-300);font-size:12.5px;}
+.promo-carousel-wrap{position:relative;display:flex;align-items:center;gap:6px;z-index:1;}
+.promo-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 20px;flex:1;}
+.promo-carousel::-webkit-scrollbar{display:none;}
+.promo-card{flex:0 0 76%;max-width:250px;scroll-snap-align:center;background:var(--white);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-md);cursor:pointer;position:relative;}
+.promo-card .promo-ribbon{position:absolute;top:10px;left:-6px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;padding:4px 12px 4px 16px;border-radius:0 6px 6px 0;letter-spacing:.03em;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.18);}
+.promo-card img{width:100%;height:130px;object-fit:cover;background:var(--gray-100);}
+.promo-img-placeholder{width:100%;height:130px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:30px;}
+.promo-body{padding:12px 14px 14px;}
+.promo-title{font-weight:700;font-size:14.5px;margin-bottom:5px;font-family:var(--font-display);}
+.promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:15px;}
 .promo-price .strike{text-decoration:line-through;color:var(--gray-300);font-weight:500;font-size:12px;margin-right:6px;}
-.promo-until{font-size:11px;color:var(--red);font-weight:700;margin-top:5px;}
+.promo-until{font-size:11px;color:var(--red);font-weight:700;margin-top:6px;}
+.promo-nav{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:19px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin:0 4px;}
+.promo-nav:hover{background:rgba(255,255,255,.28);}
+.promo-dots{display:flex;justify-content:center;gap:6px;margin-top:14px;position:relative;z-index:1;}
+.promo-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;transition:width .2s;}
+.promo-dot.active{background:var(--gold-500);width:16px;border-radius:3px;}
 
 .cat-nav{position:sticky;top:0;z-index:30;background:var(--gray-50);border-bottom:1px solid var(--gray-200);padding:12px 0;}
 .cat-nav-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px;}
@@ -131,7 +147,20 @@
     </div>
   </header>
 
-  <div class="promo-bar hidden" id="promoBar"></div>
+  <div class="promo-section hidden" id="promoBar">
+    <div class="container">
+      <div class="promo-heading">
+        <span class="promo-flame">🔥</span>
+        <div><h2>Promoções</h2><p>Ofertas por tempo limitado — aproveite antes que acabem</p></div>
+      </div>
+      <div class="promo-carousel-wrap">
+        <button class="promo-nav" onclick="promoScroll(-1)">‹</button>
+        <div class="promo-carousel" id="promoCarousel"></div>
+        <button class="promo-nav" onclick="promoScroll(1)">›</button>
+      </div>
+      <div class="promo-dots" id="promoDots"></div>
+    </div>
+  </div>
 
   <nav class="cat-nav">
     <div class="cat-nav-inner" id="catNav"></div>
@@ -170,7 +199,12 @@ function renderCardapio(){
   const activeCombos = STATE.combos.filter(c=>c.active);
   const cats = ["Todos", ...(activeCombos.length ? ["Combos"] : []), ...STATE.config.categories];
   const nav = document.getElementById("catNav");
-  nav.innerHTML = cats.map(c=>`<button class="cat-chip ${c===activeCategory?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join("");
+  nav.innerHTML = cats.map(c=>{
+    const isActive = c===activeCategory;
+    if(c==="Todos" || isActive) return `<button class="cat-chip ${isActive?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`;
+    const col = getCategoryColor(c);
+    return `<button class="cat-chip" style="background:${col.bg};color:${col.text};border-color:${col.bg}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`;
+  }).join("");
 
   const container = document.getElementById("menuSections");
   const activeProds = STATE.products.filter(p=>p.active);
@@ -193,10 +227,12 @@ function renderCardapio(){
   renderCartWidgets();
 }
 function productSectionHtml(cat, items){
-  return `<div class="menu-section"><h2>${escapeHtml(cat)}</h2><span class="count">${items.length} ${items.length===1?'item':'itens'}</span><div class="product-grid">${items.map(productCardHtml).join("")}</div></div>`;
+  const col = getCategoryColor(cat);
+  return `<div class="menu-section"><h2><span class="cat-dot" style="background:${col.text}"></span>${escapeHtml(cat)}</h2><span class="count">${items.length} ${items.length===1?'item':'itens'}</span><div class="product-grid">${items.map(productCardHtml).join("")}</div></div>`;
 }
 function comboSectionHtml(combos){
-  return `<div class="menu-section"><h2>Combos</h2><span class="count">${combos.length} ${combos.length===1?'combo':'combos'}</span><div class="product-grid">${combos.map(comboCardHtml).join("")}</div></div>`;
+  const col = getCategoryColor("Combos");
+  return `<div class="menu-section"><h2><span class="cat-dot" style="background:${col.text}"></span>Combos</h2><span class="count">${combos.length} ${combos.length===1?'combo':'combos'}</span><div class="product-grid">${combos.map(comboCardHtml).join("")}</div></div>`;
 }
 function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badge-diamond"></span><div>${escapeHtml(msg)}</div></div>`; }
 
@@ -240,17 +276,20 @@ function quickAddCombo(id){
   showToast(`${c.name} adicionado à sacola`);
 }
 
-/* ---------- promoções ---------- */
+/* ---------- promoções: carrossel ---------- */
+let promoAutoTimer = null;
 function renderPromotions(){
   const promos = activePromotions();
   const wrap = document.getElementById("promoBar");
-  if(!promos.length){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
+  if(!promos.length){ wrap.classList.add("hidden"); clearInterval(promoAutoTimer); return; }
+  const carousel = document.getElementById("promoCarousel");
   const cards = promos.map(p=>{
     const base = p.refType==="combo" ? STATE.combos.find(x=>x.id===p.refId) : STATE.products.find(x=>x.id===p.refId);
     if(!base) return "";
     const price = (p.price!==null && p.price!==undefined && p.price!=="") ? Number(p.price) : base.price;
     const img = p.image || base.image;
     return `<div class="promo-card" onclick="openPromotionDetail('${p.id}')">
+      <div class="promo-ribbon">Oferta</div>
       ${img ? `<img src="${escapeAttr(img)}">` : `<div class="promo-img-placeholder">🔥</div>`}
       <div class="promo-body">
         <div class="promo-title">${escapeHtml(p.title || base.name)}</div>
@@ -259,9 +298,60 @@ function renderPromotions(){
       </div>
     </div>`;
   }).join("");
-  if(!cards.trim()){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
+  if(!cards.trim()){ wrap.classList.add("hidden"); wrap.innerHTML=""; clearInterval(promoAutoTimer); return; }
   wrap.classList.remove("hidden");
-  wrap.innerHTML = `<div class="promo-bar-inner">${cards}</div>`;
+  carousel.innerHTML = cards;
+  renderPromoDots(promos.length);
+  setupPromoAutoScroll();
+}
+function renderPromoDots(count){
+  const dotsWrap = document.getElementById("promoDots");
+  if(count<=1){ dotsWrap.innerHTML=""; return; }
+  dotsWrap.innerHTML = Array.from({length:count}).map((_,i)=>`<span class="promo-dot ${i===0?'active':''}" data-i="${i}"></span>`).join("");
+  dotsWrap.querySelectorAll(".promo-dot").forEach(d=>{
+    d.onclick = ()=>{
+      const i = parseInt(d.dataset.i, 10);
+      const carousel = document.getElementById("promoCarousel");
+      const target = carousel.querySelectorAll(".promo-card")[i];
+      if(target) carousel.scrollTo({left: target.offsetLeft - 20, behavior:"smooth"});
+      resetPromoAutoTimer();
+    };
+  });
+}
+function promoScroll(dir){
+  const carousel = document.getElementById("promoCarousel");
+  const card = carousel.querySelector(".promo-card");
+  if(!card) return;
+  carousel.scrollBy({left: dir * (card.getBoundingClientRect().width + 14), behavior:"smooth"});
+  resetPromoAutoTimer();
+}
+function setupPromoAutoScroll(){
+  const carousel = document.getElementById("promoCarousel");
+  if(!carousel) return;
+  carousel.onscroll = ()=>{
+    const cards = [...carousel.querySelectorAll(".promo-card")];
+    if(!cards.length) return;
+    let closest = 0, minDist = Infinity;
+    cards.forEach((c,i)=>{
+      const dist = Math.abs(c.offsetLeft - 20 - carousel.scrollLeft);
+      if(dist < minDist){ minDist = dist; closest = i; }
+    });
+    document.querySelectorAll(".promo-dot").forEach((d,i)=>d.classList.toggle("active", i===closest));
+  };
+  resetPromoAutoTimer();
+}
+function resetPromoAutoTimer(){
+  clearInterval(promoAutoTimer);
+  const carousel = document.getElementById("promoCarousel");
+  if(!carousel) return;
+  promoAutoTimer = setInterval(()=>{
+    const cards = [...carousel.querySelectorAll(".promo-card")];
+    if(cards.length < 2) return;
+    const cardWidth = cards[0].getBoundingClientRect().width + 14;
+    const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+    if(carousel.scrollLeft >= maxScroll - 5){ carousel.scrollTo({left:0, behavior:"smooth"}); }
+    else { carousel.scrollBy({left: cardWidth, behavior:"smooth"}); }
+  }, 4000);
 }
 function openPromotionDetail(promoId){
   const promo = STATE.promotions.find(x=>x.id===promoId);
@@ -376,8 +466,13 @@ function renderCartWidgets(){
   const fc = document.getElementById("floatingCart");
   fc.classList.toggle("hidden", count===0);
   if(count>0){
+    const fees = STATE.config.deliveryFees || [];
     document.getElementById("fcCount").textContent = count+(count===1?" item":" itens");
-    document.getElementById("fcTotal").textContent = money(cartSubtotal()+ (STATE.config.deliveryFee||0));
+    if(fees.length){
+      document.getElementById("fcTotal").textContent = money(cartSubtotal()) + " + entrega";
+    } else {
+      document.getElementById("fcTotal").textContent = money(cartSubtotal()+ (STATE.config.deliveryFee||0));
+    }
   }
 }
 function openCart(){
@@ -389,7 +484,9 @@ function renderCartSheetContent(){
   const wrap = document.getElementById("cartSheetInner");
   if(!wrap) return;
   const sub = cartSubtotal();
-  const fee = STATE.config.deliveryFee || 0;
+  const fees = STATE.config.deliveryFees || [];
+  const feeDisplay = fees.length ? "Escolhida no próximo passo" : money(STATE.config.deliveryFee||0);
+  const feeValue = fees.length ? 0 : (STATE.config.deliveryFee||0);
   wrap.innerHTML = `
     <div class="cart-head"><h3>Sua sacola</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
     <div class="cart-items">
@@ -411,17 +508,21 @@ function renderCartSheetContent(){
     </div>
     <div class="cart-summary">
       <div class="sum-row"><span>Subtotal</span><span>${money(sub)}</span></div>
-      <div class="sum-row"><span>Taxa de entrega</span><span>${money(fee)}</span></div>
-      <div class="sum-row total"><span>Total</span><span>${money(sub+fee)}</span></div>
+      <div class="sum-row"><span>Taxa de entrega</span><span>${feeDisplay}</span></div>
+      <div class="sum-row total"><span>Total ${fees.length?'estimado':''}</span><span>${money(sub+feeValue)}</span></div>
       <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="openCheckout()">Finalizar pedido</button>
     </div>`;
 }
 
 /* ---------- checkout ---------- */
 let selectedPayment = "pix";
+let selectedBairro = null;
 function openCheckout(){
   selectedPayment = "pix";
-  const sub = cartSubtotal(); const fee = STATE.config.deliveryFee||0;
+  selectedBairro = null;
+  const sub = cartSubtotal();
+  const fees = STATE.config.deliveryFees || [];
+  const initialFee = fees.length ? 0 : (STATE.config.deliveryFee||0);
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>Finalizar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
@@ -429,6 +530,13 @@ function openCheckout(){
         <div class="field"><label>Seu nome</label><input id="chkName" placeholder="Como podemos te chamar?"></div>
         <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" placeholder="(00) 00000-0000"></div>
         <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" placeholder="Rua, número, bairro, complemento"></textarea></div>
+        ${fees.length ? `
+        <div class="field"><label>Bairro de entrega</label>
+          <select id="chkBairro" onchange="updateCheckoutFee()">
+            <option value="">Selecione seu bairro...</option>
+            ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)} — ${money(f.fee)}</option>`).join("")}
+          </select>
+        </div>` : ""}
         <div class="field">
           <label>Forma de pagamento</label>
           <div class="pay-options">
@@ -437,10 +545,18 @@ function openCheckout(){
             <div class="pay-opt" id="pay-dinheiro" onclick="selectPayment('dinheiro')">Dinheiro</div>
           </div>
         </div>
-        <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span>${money(sub+fee)}</span></div>
+        <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span id="checkoutTotalValue">${money(sub+initialFee)}</span></div>
         <button class="btn btn-gold btn-block" onclick="submitOrder()">Confirmar e pagar</button>
       </div>
     </div>`);
+}
+function updateCheckoutFee(){
+  const sel = document.getElementById("chkBairro");
+  const idx = sel.value;
+  selectedBairro = idx==="" ? null : STATE.config.deliveryFees[idx];
+  const sub = cartSubtotal();
+  const fee = selectedBairro ? selectedBairro.fee : 0;
+  document.getElementById("checkoutTotalValue").textContent = money(sub+fee);
 }
 function selectPayment(p){
   selectedPayment = p;
@@ -451,12 +567,20 @@ function submitOrder(){
   const phone = document.getElementById("chkPhone").value.trim();
   const address = document.getElementById("chkAddress").value.trim();
   if(!name || !phone || !address){ showToast("Preencha nome, telefone e endereço."); return; }
-  const sub = cartSubtotal(); const fee = STATE.config.deliveryFee||0;
+  const fees = STATE.config.deliveryFees || [];
+  let fee = STATE.config.deliveryFee || 0;
+  let bairroLabel = "";
+  if(fees.length){
+    if(!selectedBairro){ showToast("Selecione o bairro de entrega."); return; }
+    fee = selectedBairro.fee;
+    bairroLabel = selectedBairro.bairro;
+  }
+  const sub = cartSubtotal();
   const code = "#" + String(++orderCounter).padStart(4,"0");
   const order = {
     code,
     customerName: name,
-    phone, address,
+    phone, address, bairro: bairroLabel,
     items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
     subtotal: sub, deliveryFee: fee, total: sub+fee,
     payment: selectedPayment,
