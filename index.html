@@ -56,6 +56,7 @@
 .cat-chip.active{background:var(--purple-700);color:var(--white);border-color:var(--purple-700);}
 
 .menu-section{padding:28px 0 8px;}
+.menu-section + .menu-section{border-top:1.5px solid var(--gray-200);margin-top:6px;padding-top:32px;}
 .menu-section h2{font-size:18px;margin-bottom:4px;}
 .menu-section .count{font-size:13px;color:var(--ink-soft);margin-bottom:16px;display:block;}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
@@ -190,12 +191,7 @@ function renderCardapio(){
   const activeCombos = STATE.combos.filter(c=>c.active);
   const cats = ["Todos", ...(activeCombos.length ? ["Combos"] : []), ...STATE.config.categories];
   const nav = document.getElementById("catNav");
-  nav.innerHTML = cats.map(c=>{
-    const isActive = c===activeCategory;
-    if(c==="Todos" || isActive) return `<button class="cat-chip ${isActive?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`;
-    const col = getCategoryColor(c);
-    return `<button class="cat-chip" style="background:${col.bg};color:${col.text};border-color:${col.bg}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`;
-  }).join("");
+  nav.innerHTML = cats.map(c=>`<button class="cat-chip ${c===activeCategory?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join("");
 
   const container = document.getElementById("menuSections");
   const activeProds = STATE.products.filter(p=>p.active);
@@ -218,12 +214,10 @@ function renderCardapio(){
   renderCartWidgets();
 }
 function productSectionHtml(cat, items){
-  const col = getCategoryColor(cat);
-  return `<div class="menu-section"><h2><span class="cat-dot" style="background:${col.text}"></span>${escapeHtml(cat)}</h2><span class="count">${items.length} ${items.length===1?'item':'itens'}</span><div class="product-grid">${items.map(productCardHtml).join("")}</div></div>`;
+  return `<div class="menu-section"><h2>${escapeHtml(cat)}</h2><span class="count">${items.length} ${items.length===1?'item':'itens'}</span><div class="product-grid">${items.map(productCardHtml).join("")}</div></div>`;
 }
 function comboSectionHtml(combos){
-  const col = getCategoryColor("Combos");
-  return `<div class="menu-section"><h2><span class="cat-dot" style="background:${col.text}"></span>Combos</h2><span class="count">${combos.length} ${combos.length===1?'combo':'combos'}</span><div class="product-grid">${combos.map(comboCardHtml).join("")}</div></div>`;
+  return `<div class="menu-section"><h2>Combos</h2><span class="count">${combos.length} ${combos.length===1?'combo':'combos'}</span><div class="product-grid">${combos.map(comboCardHtml).join("")}</div></div>`;
 }
 function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badge-diamond"></span><div>${escapeHtml(msg)}</div></div>`; }
 
@@ -529,7 +523,7 @@ function submitOrder(){
     items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
     subtotal: sub, deliveryFee: fee, total: sub+fee,
     payment: selectedPayment,
-    status: STATE.config.autoAcceptOrders ? "recebido" : "pendente",
+    status: STATE.config.autoAcceptOrders ? "preparo" : "pendente",
     createdAt: Date.now(),
     dateStr: todayStr()
   };

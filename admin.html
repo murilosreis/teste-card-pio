@@ -453,8 +453,6 @@ function setAdminTab(tab){
   document.getElementById("adminSidebar").classList.remove("open");
   if(tab==="orders"){
     document.getElementById("ordersAlertDot").classList.add("hidden");
-    alertedOrderIds.clear();
-    document.getElementById("newOrderBannerWrap").innerHTML = "";
   }
   renderAdmin();
 }
@@ -480,19 +478,36 @@ function renderAdmin(){
 function playAlertSound(){
   try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0,1].forEach(i=>{
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.001, ctx.currentTime + i*0.35);
-      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + i*0.35 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.35 + 0.3);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + i*0.35);
-      osc.stop(ctx.currentTime + i*0.35 + 0.32);
-    });
+    // alarme de 2 tons alternados, repetido 4 vezes, bem mais alto e perceptível
+    const pattern = [1046.5, 784]; // dó agudo / sol — "ding-dong" repetido
+    const reps = 4;
+    for(let r=0; r<reps; r++){
+      pattern.forEach((freq, i)=>{
+        const t = ctx.currentTime + r*0.55 + i*0.24;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.55, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.24);
+      });
+    }
   }catch(e){ /* navegador pode bloquear áudio sem interação prévia — sem problema, o alerta visual continua */ }
+}
+let alertRepeatTimer = null;
+function startAlertRepeat(){
+  clearInterval(alertRepeatTimer);
+  alertRepeatTimer = setInterval(()=>{
+    if(alertedOrderIds.size === 0){ clearInterval(alertRepeatTimer); return; }
+    playAlertSound();
+  }, 12000);
+}
+function stopAlertRepeat(){
+  clearInterval(alertRepeatTimer);
 }
 function checkForNewOrders(){
   const currentIds = STATE.orders.map(o=>o.id);
@@ -506,6 +521,7 @@ function checkForNewOrders(){
   const freshOrders = STATE.orders.filter(o=>freshIds.includes(o.id));
   freshOrders.forEach(o=>alertedOrderIds.add(o.id));
   playAlertSound();
+  startAlertRepeat();
   const dot = document.getElementById("ordersAlertDot");
   if(adminTab !== "orders") dot.classList.remove("hidden");
   showToast(freshOrders.length===1 ? `🔔 Novo pedido: ${freshOrders[0].code}` : `🔔 ${freshOrders.length} novos pedidos`);
@@ -525,6 +541,7 @@ function renderNewOrderBanner(){
 }
 function dismissNewOrderBanner(){
   alertedOrderIds.clear();
+  stopAlertRepeat();
   document.getElementById("newOrderBannerWrap").innerHTML = "";
 }
 
@@ -573,7 +590,7 @@ function renderOverview(){
     `<div class="top-product-row"><span class="tp-name">${escapeHtml(name)}</span><span class="tp-count">${count}x</span></div>`
   ).join("") : `<p style="font-size:13px;color:var(--ink-soft)">Sem vendas no período.</p>`;
 
-  const statusCounts = {pendente:0,recebido:0,preparo:0,pronto:0,entregue:0,cancelado:0};
+  const statusCounts = {pendente:0,preparo:0,saiu_entrega:0,entregue:0,cancelado:0};
   STATE.orders.filter(o=>o.dateStr===today).forEach(o=>statusCounts[o.status]=(statusCounts[o.status]||0)+1);
   document.getElementById("statusBreakdown").innerHTML = Object.entries(statusCounts).map(([s,c])=>
     `<div class="top-product-row"><span class="status-badge ${s}">${STATUS_LABEL[s]}</span><span class="tp-count">${c}</span></div>`
@@ -705,7 +722,7 @@ function renderOrders(){
   renderNewOrderBanner();
   const counts = {todos: STATE.orders.length};
   ["pendente"].concat(STATUS_FLOW).concat("cancelado").forEach(s=>counts[s]=STATE.orders.filter(o=>o.status===s).length);
-  const tabs = [["todos","Todos"], ["pendente","Pendentes"], ["recebido","Recebido"], ["preparo","Em preparo"], ["pronto","Pronto"], ["entregue","Entregue"], ["cancelado","Cancelado"]];
+  const tabs = [["todos","Todos"], ["pendente","Pendentes"], ["preparo","Em preparo"], ["saiu_entrega","Saiu para entrega"], ["entregue","Entregue"], ["cancelado","Cancelado"]];
   document.getElementById("orderStatusTabs").innerHTML = tabs.map(([key,label])=>
     `<button class="status-tab ${orderStatusFilter===key?'active':''}" onclick="setOrderFilter('${key}')">${label}<span class="n">${counts[key]||0}</span></button>`
   ).join("");
@@ -721,7 +738,7 @@ function renderOrders(){
       return t;
     }).join("<br>");
     let nextStatus = null, nextLabel = "";
-    if(o.status==="pendente"){ nextStatus = "recebido"; nextLabel = "Aceitar pedido"; }
+    if(o.status==="pendente"){ nextStatus = "preparo"; nextLabel = "Aceitar pedido"; }
     else {
       const nextIdx = STATUS_FLOW.indexOf(o.status);
       if(nextIdx>=0 && nextIdx<STATUS_FLOW.length-1){ nextStatus = STATUS_FLOW[nextIdx+1]; nextLabel = "Marcar "+STATUS_LABEL[nextStatus].toLowerCase(); }
@@ -737,13 +754,21 @@ function renderOrders(){
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
         <span class="oc-total">${money(o.total)}</span>
-        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${o.id}','${nextStatus}',renderOrders)">${nextLabel}</button>` : ""}
+        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceOrderStatus('${o.id}','${nextStatus}')">${nextLabel}</button>` : ""}
         ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
       </div>
     </div>`;
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
+function advanceOrderStatus(orderId, status){
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(order && ["preparo","saiu_entrega","entregue"].includes(status)){
+    const waUrl = buildCustomerStatusWhatsAppUrl(order, status);
+    if(waUrl) window.open(waUrl, "_blank");
+  }
+  updateOrderStatus(orderId, status, renderOrders);
+}
 
 /* ---------- cardápio (produtos) ---------- */
 function renderMenuAdmin(){
@@ -755,7 +780,7 @@ function renderMenuAdmin(){
     <tr>
       <td>${p.image?`<img class="prod-thumb" src="${escapeAttr(p.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍽️</div>`}</td>
       <td><b>${escapeHtml(p.name)}</b></td>
-      <td><span class="cat-dot" style="background:${getCategoryColor(p.category).text}"></span>${escapeHtml(p.category)}</td>
+      <td>${escapeHtml(p.category)}</td>
       <td style="font-family:var(--font-mono)">${money(p.price)}</td>
       <td><button class="toggle ${p.active?'on':''}" onclick="toggleProductActive('${p.id}')"></button></td>
       <td>
@@ -829,7 +854,7 @@ function renderCombosAdmin(){
     const itemNames = (c.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean);
     return `<tr>
       <td>${c.image?`<img class="prod-thumb" src="${escapeAttr(c.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍔</div>`}</td>
-      <td><span class="cat-dot" style="background:${getCategoryColor('Combos').text}"></span><b>${escapeHtml(c.name)}</b></td>
+      <td><b>${escapeHtml(c.name)}</b></td>
       <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemNames.join(", ")||"—")}</td>
       <td style="font-family:var(--font-mono)">${money(c.price)}</td>
       <td><button class="toggle ${c.active?'on':''}" onclick="toggleComboActive('${c.id}')"></button></td>

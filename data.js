@@ -41,8 +41,8 @@ let STATE = {
   users: []
 };
 
-const STATUS_FLOW = ["recebido","preparo","pronto","entregue"];
-const STATUS_LABEL = {pendente:"Aguardando confirmação", recebido:"Recebido", preparo:"Em preparo", pronto:"Pronto", entregue:"Entregue", cancelado:"Cancelado"};
+const STATUS_FLOW = ["preparo","saiu_entrega","entregue"];
+const STATUS_LABEL = {pendente:"Aguardando confirmação", preparo:"Em preparo", saiu_entrega:"Saiu para entrega", entregue:"Entregue", cancelado:"Cancelado"};
 const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -113,6 +113,33 @@ function buildWhatsAppUrl(order){
   const digits = (STATE.config.whatsappNumber||"").replace(/\D/g,"");
   if(!digits) return null;
   const text = encodeURIComponent(buildWhatsAppMessage(order));
+  return `https://wa.me/${digits}?text=${text}`;
+}
+
+/* ---------- WhatsApp: aviso de status pro cliente ---------- */
+function normalizeBrazilPhone(raw){
+  let digits = (raw||"").replace(/\D/g,"");
+  if(!digits) return "";
+  if(digits.length <= 11) digits = "55" + digits; // assume DDI Brasil quando o cliente não digitou
+  return digits;
+}
+function buildCustomerStatusMessage(order, status){
+  const store = STATE.config.storeName || "nossa loja";
+  const lines = [];
+  if(status === "preparo"){
+    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} na ${store} está em preparo. 👨‍🍳`);
+  } else if(status === "saiu_entrega"){
+    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} saiu para entrega. 🛵 Já está a caminho até você!`);
+  } else if(status === "entregue"){
+    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} foi entregue. 🎉`);
+    lines.push(`Muito obrigado por comprar na ${store}! Esperamos que aproveite e volte sempre. 💜`);
+  }
+  return lines.join("\n");
+}
+function buildCustomerStatusWhatsAppUrl(order, status){
+  const digits = normalizeBrazilPhone(order.phone);
+  if(!digits) return null;
+  const text = encodeURIComponent(buildCustomerStatusMessage(order, status));
   return `https://wa.me/${digits}?text=${text}`;
 }
 
