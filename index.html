@@ -28,34 +28,26 @@
 .store-status .pill{background:rgba(255,255,255,.14);color:var(--white);}
 .store-status .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;}
 
-/* carrossel de promoções em destaque */
-.promo-section{background:linear-gradient(135deg, var(--purple-700), var(--purple-900));padding:26px 0 22px;position:relative;overflow:hidden;}
-.promo-section::before{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background-image:linear-gradient(135deg, transparent 46%, rgba(227,167,46,.35) 46% 54%, transparent 54%);
-  background-size:100px 100px;opacity:.35;
-}
-.promo-heading{display:flex;align-items:center;gap:12px;margin-bottom:16px;position:relative;z-index:1;}
-.promo-flame{font-size:26px;line-height:1;}
-.promo-heading h2{color:var(--white);font-size:19px;margin-bottom:2px;}
-.promo-heading p{color:var(--gold-300);font-size:12.5px;}
-.promo-carousel-wrap{position:relative;display:flex;align-items:center;gap:6px;z-index:1;}
-.promo-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 20px;flex:1;}
+/* faixa de promoções (fundo claro, com destaque nos cards) */
+.promo-section{background:var(--gold-100);padding:16px 0 18px;border-bottom:1px solid var(--gray-200);}
+.promo-heading{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.promo-flame{font-size:24px;line-height:1;}
+.promo-heading h2{color:var(--ink);font-size:17px;margin-bottom:2px;}
+.promo-heading p{color:#9A6A0E;font-size:12.5px;}
+.promo-carousel-wrap{position:relative;display:flex;align-items:center;gap:4px;}
+.promo-carousel{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:2px 20px;flex:1;}
 .promo-carousel::-webkit-scrollbar{display:none;}
-.promo-card{flex:0 0 76%;max-width:250px;scroll-snap-align:center;background:var(--white);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-md);cursor:pointer;position:relative;}
+.promo-card{flex:0 0 190px;scroll-snap-align:start;background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;position:relative;}
 .promo-card .promo-ribbon{position:absolute;top:10px;left:-6px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;padding:4px 12px 4px 16px;border-radius:0 6px 6px 0;letter-spacing:.03em;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.18);}
-.promo-card img{width:100%;height:130px;object-fit:cover;background:var(--gray-100);}
-.promo-img-placeholder{width:100%;height:130px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:30px;}
-.promo-body{padding:12px 14px 14px;}
-.promo-title{font-weight:700;font-size:14.5px;margin-bottom:5px;font-family:var(--font-display);}
-.promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:15px;}
+.promo-card img{width:100%;height:110px;object-fit:cover;background:var(--gray-100);}
+.promo-img-placeholder{width:100%;height:110px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:28px;}
+.promo-body{padding:10px 12px 12px;}
+.promo-title{font-weight:700;font-size:13.5px;margin-bottom:4px;line-height:1.3;}
+.promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:14px;}
 .promo-price .strike{text-decoration:line-through;color:var(--gray-300);font-weight:500;font-size:12px;margin-right:6px;}
-.promo-until{font-size:11px;color:var(--red);font-weight:700;margin-top:6px;}
-.promo-nav{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:19px;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin:0 4px;}
-.promo-nav:hover{background:rgba(255,255,255,.28);}
-.promo-dots{display:flex;justify-content:center;gap:6px;margin-top:14px;position:relative;z-index:1;}
-.promo-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer;transition:width .2s;}
-.promo-dot.active{background:var(--gold-500);width:16px;border-radius:3px;}
+.promo-until{font-size:11px;color:var(--red);font-weight:700;margin-top:5px;}
+.promo-nav{width:30px;height:30px;border-radius:50%;background:var(--white);color:var(--purple-700);font-size:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);margin:0 2px;}
+.promo-nav:hover{background:var(--gray-100);}
 
 .cat-nav{position:sticky;top:0;z-index:30;background:var(--gray-50);border-bottom:1px solid var(--gray-200);padding:12px 0;}
 .cat-nav-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px;}
@@ -158,7 +150,6 @@
         <div class="promo-carousel" id="promoCarousel"></div>
         <button class="promo-nav" onclick="promoScroll(1)">›</button>
       </div>
-      <div class="promo-dots" id="promoDots"></div>
     </div>
   </div>
 
@@ -276,12 +267,11 @@ function quickAddCombo(id){
   showToast(`${c.name} adicionado à sacola`);
 }
 
-/* ---------- promoções: carrossel ---------- */
-let promoAutoTimer = null;
+/* ---------- promoções: faixa com seta + arrastar o dedo ---------- */
 function renderPromotions(){
   const promos = activePromotions();
   const wrap = document.getElementById("promoBar");
-  if(!promos.length){ wrap.classList.add("hidden"); clearInterval(promoAutoTimer); return; }
+  if(!promos.length){ wrap.classList.add("hidden"); return; }
   const carousel = document.getElementById("promoCarousel");
   const cards = promos.map(p=>{
     const base = p.refType==="combo" ? STATE.combos.find(x=>x.id===p.refId) : STATE.products.find(x=>x.id===p.refId);
@@ -298,60 +288,15 @@ function renderPromotions(){
       </div>
     </div>`;
   }).join("");
-  if(!cards.trim()){ wrap.classList.add("hidden"); wrap.innerHTML=""; clearInterval(promoAutoTimer); return; }
+  if(!cards.trim()){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
   wrap.classList.remove("hidden");
   carousel.innerHTML = cards;
-  renderPromoDots(promos.length);
-  setupPromoAutoScroll();
-}
-function renderPromoDots(count){
-  const dotsWrap = document.getElementById("promoDots");
-  if(count<=1){ dotsWrap.innerHTML=""; return; }
-  dotsWrap.innerHTML = Array.from({length:count}).map((_,i)=>`<span class="promo-dot ${i===0?'active':''}" data-i="${i}"></span>`).join("");
-  dotsWrap.querySelectorAll(".promo-dot").forEach(d=>{
-    d.onclick = ()=>{
-      const i = parseInt(d.dataset.i, 10);
-      const carousel = document.getElementById("promoCarousel");
-      const target = carousel.querySelectorAll(".promo-card")[i];
-      if(target) carousel.scrollTo({left: target.offsetLeft - 20, behavior:"smooth"});
-      resetPromoAutoTimer();
-    };
-  });
 }
 function promoScroll(dir){
   const carousel = document.getElementById("promoCarousel");
   const card = carousel.querySelector(".promo-card");
   if(!card) return;
   carousel.scrollBy({left: dir * (card.getBoundingClientRect().width + 14), behavior:"smooth"});
-  resetPromoAutoTimer();
-}
-function setupPromoAutoScroll(){
-  const carousel = document.getElementById("promoCarousel");
-  if(!carousel) return;
-  carousel.onscroll = ()=>{
-    const cards = [...carousel.querySelectorAll(".promo-card")];
-    if(!cards.length) return;
-    let closest = 0, minDist = Infinity;
-    cards.forEach((c,i)=>{
-      const dist = Math.abs(c.offsetLeft - 20 - carousel.scrollLeft);
-      if(dist < minDist){ minDist = dist; closest = i; }
-    });
-    document.querySelectorAll(".promo-dot").forEach((d,i)=>d.classList.toggle("active", i===closest));
-  };
-  resetPromoAutoTimer();
-}
-function resetPromoAutoTimer(){
-  clearInterval(promoAutoTimer);
-  const carousel = document.getElementById("promoCarousel");
-  if(!carousel) return;
-  promoAutoTimer = setInterval(()=>{
-    const cards = [...carousel.querySelectorAll(".promo-card")];
-    if(cards.length < 2) return;
-    const cardWidth = cards[0].getBoundingClientRect().width + 14;
-    const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-    if(carousel.scrollLeft >= maxScroll - 5){ carousel.scrollTo({left:0, behavior:"smooth"}); }
-    else { carousel.scrollBy({left: cardWidth, behavior:"smooth"}); }
-  }, 4000);
 }
 function openPromotionDetail(promoId){
   const promo = STATE.promotions.find(x=>x.id===promoId);
