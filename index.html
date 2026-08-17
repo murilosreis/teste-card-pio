@@ -174,7 +174,6 @@
 <script>
 let cart = [];
 let activeCategory = "Todos";
-let orderCounter = 0;
 
 /* =====================================================================
    CARDÁPIO — render
@@ -514,25 +513,31 @@ function submitOrder(){
     fee = selectedBairro.fee;
     bairroLabel = selectedBairro.bairro;
   }
+  // abre a aba do WhatsApp em branco AGORA, ainda dentro do clique do usuário,
+  // para o navegador não bloquear o popup — o endereço é preenchido assim que o pedido for gerado
+  const waWindow = window.open("", "_blank");
   const sub = cartSubtotal();
-  const code = "#" + String(++orderCounter).padStart(4,"0");
-  const order = {
-    code,
-    customerName: name,
-    phone, address, bairro: bairroLabel,
-    items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
-    subtotal: sub, deliveryFee: fee, total: sub+fee,
-    payment: selectedPayment,
-    status: STATE.config.autoAcceptOrders ? "preparo" : "pendente",
-    createdAt: Date.now(),
-    dateStr: todayStr()
-  };
-  const waUrl = buildWhatsAppUrl(order);
-  if(waUrl) window.open(waUrl, "_blank");
-  createOrderData(order).then(()=>{
-    cart = [];
-    renderCartWidgets();
-    showOrderConfirmation(order, waUrl);
+  getNextOrderNumber().then(num=>{
+    const code = "#" + String(num).padStart(4,"0");
+    const order = {
+      code,
+      customerName: name,
+      phone, address, bairro: bairroLabel,
+      items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
+      subtotal: sub, deliveryFee: fee, total: sub+fee,
+      payment: selectedPayment,
+      status: STATE.config.autoAcceptOrders ? "preparo" : "pendente",
+      createdAt: Date.now(),
+      dateStr: todayStr()
+    };
+    const waUrl = buildWhatsAppUrl(order);
+    if(waUrl && waWindow){ waWindow.location.href = waUrl; }
+    else if(waWindow){ waWindow.close(); }
+    createOrderData(order).then(()=>{
+      cart = [];
+      renderCartWidgets();
+      showOrderConfirmation(order, waUrl);
+    });
   });
 }
 function showOrderConfirmation(order, waUrl){

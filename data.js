@@ -38,7 +38,8 @@ let STATE = {
   combos: [],
   promotions: [],
   orders: [],
-  users: []
+  users: [],
+  orderCounter: 0
 };
 
 const STATUS_FLOW = ["preparo","saiu_entrega","entregue"];
@@ -151,7 +152,7 @@ function loadLocal(){
     const raw = localStorage.getItem(LS_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      STATE = Object.assign({combos:[], promotions:[], users:[]}, parsed);
+      STATE = Object.assign({combos:[], promotions:[], users:[], orderCounter:0}, parsed);
       STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[]}, STATE.config);
     }
     else { seedDemoData(); saveLocal(); }
@@ -283,6 +284,28 @@ function createOrderData(order){
     STATE.orders.unshift(order);
     saveLocal();
     return Promise.resolve();
+  }
+}
+
+/* ---------- número de pedido: contador persistente e atômico ---------- */
+function getNextOrderNumberLocal(){
+  STATE.orderCounter = (STATE.orderCounter || 0) + 1;
+  saveLocal();
+  return STATE.orderCounter;
+}
+function getNextOrderNumber(){
+  if(useFirebase){
+    const ref = db.collection("counters").doc("orders");
+    return db.runTransaction(tx=>{
+      return tx.get(ref).then(doc=>{
+        const current = doc.exists ? (doc.data().value || 0) : 0;
+        const next = current + 1;
+        tx.set(ref, {value: next});
+        return next;
+      });
+    }).catch(()=>{ handleFirestoreDown(); return getNextOrderNumberLocal(); });
+  } else {
+    return Promise.resolve(getNextOrderNumberLocal());
   }
 }
 function updateOrderStatus(orderId, status, onDone){
