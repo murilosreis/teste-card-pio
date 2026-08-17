@@ -1,113 +1,157 @@
-:root{
-  --purple-900:#2A0F4E;
-  --purple-700:#4B1F7A;
-  --purple-600:#5C2A93;
-  --purple-500:#7440AD;
-  --gold-500:#E3A72E;
-  --gold-300:#F0C568;
-  --gold-100:#FBEBC7;
-  --orange:#F2622E;
-  --white:#FFFFFF;
-  --ink:#221733;
-  --ink-soft:#5B4D72;
-  --gray-50:#F8F6FC;
-  --gray-100:#EFEAF7;
-  --gray-200:#E1D9F0;
-  --gray-300:#CBBFE3;
-  --teal:#1F9E86;
-  --teal-100:#E1F5F1;
-  --red:#D6455B;
-  --red-100:#FBE6EA;
-  --amber-100:#FCF0DA;
-  --shadow-sm:0 2px 8px rgba(42,15,78,.08);
-  --shadow-md:0 8px 24px rgba(42,15,78,.14);
-  --shadow-lg:0 20px 48px rgba(42,15,78,.22);
-  --radius:16px;
-  --radius-sm:10px;
-  --font-display:'Space Grotesk',sans-serif;
-  --font-body:'Inter',sans-serif;
-  --font-mono:'JetBrains Mono',monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{
-  font-family:var(--font-body);
-  color:var(--ink);
-  background:var(--gray-50);
-  -webkit-font-smoothing:antialiased;
-  min-height:100vh;
-}
-h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-0.02em;}
-button{font-family:inherit;cursor:pointer;border:none;background:none;}
-input,select,textarea{font-family:inherit;font-size:15px;}
-a{color:inherit;text-decoration:none;}
-img{max-width:100%;display:block;}
-::selection{background:var(--gold-300);color:var(--ink);}
+// FIREBASE CONFIG — chaves do projeto testcardapio (Firebase Console > Configurações do projeto > SDK setup)
+const firebaseConfig = {
+  apiKey: "AIzaSyD-vIfcA-KU02w4TP5r3JUTUVeAzsOyjh4",
+  authDomain: "testcardapio.firebaseapp.com",
+  projectId: "testcardapio",
+  storageBucket: "testcardapio.firebasestorage.app",
+  messagingSenderId: "150203190017",
+  appId: "1:150203190017:web:a92a1285fc9678c0bc6900"
+};
 
-/* ---------- diamond pattern (signature motif) ---------- */
-.diamond-field{position:relative;overflow:hidden;background:var(--purple-700);}
-.diamond-field::before{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background-image:
-    linear-gradient(135deg, transparent 46%, rgba(227,167,46,.55) 46% 54%, transparent 54%),
-    linear-gradient(45deg, transparent 46%, rgba(255,255,255,.10) 46% 54%, transparent 54%);
-  background-size:120px 120px, 90px 90px;
-  background-position:0 0, 45px 30px;
-  opacity:.5;
-  mix-blend-mode:screen;
-}
-.diamond-field::after{
-  content:"";position:absolute;top:0;left:0;
-  border-style:solid;border-width:0 0 26px 26px;
-  border-color:transparent transparent transparent var(--orange);
-}
-.diamond-field > *{position:relative;z-index:1;}
+let db = null;
+let useFirebase = false;
+let firestoreUnavailable = false;
 
-/* ---------- utility ---------- */
-.container{max-width:1180px;margin:0 auto;padding:0 20px;}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;}
-.badge-diamond{width:7px;height:7px;background:var(--gold-500);transform:rotate(45deg);display:inline-block;flex-shrink:0;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:12px;font-weight:600;font-size:14.5px;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
-.btn:active{transform:scale(.97);}
-.btn-primary{background:var(--purple-700);color:var(--white);box-shadow:var(--shadow-sm);}
-.btn-primary:hover{background:var(--purple-600);box-shadow:var(--shadow-md);}
-.btn-gold{background:var(--gold-500);color:var(--purple-900);box-shadow:var(--shadow-sm);}
-.btn-gold:hover{background:var(--gold-300);}
-.btn-ghost{background:var(--white);color:var(--purple-700);border:1.5px solid var(--gray-200);}
-.btn-ghost:hover{border-color:var(--purple-500);}
-.btn-danger{background:var(--red-100);color:var(--red);}
-.btn-block{width:100%;}
-.btn-sm{padding:8px 14px;font-size:13px;border-radius:9px;}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
-.field label{font-size:13px;font-weight:600;color:var(--ink-soft);}
-.field input,.field select,.field textarea{
-  padding:11px 13px;border:1.5px solid var(--gray-200);border-radius:10px;background:var(--white);color:var(--ink);
-  transition:border-color .15s;
-}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--purple-500);}
-.field textarea{resize:vertical;min-height:70px;}
-.hidden{display:none !important;}
-.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);}
-.scrim{position:fixed;inset:0;background:rgba(42,15,78,.45);backdrop-filter:blur(2px);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
-@media(min-width:720px){.scrim{align-items:center;}}
-.sheet{background:var(--white);width:100%;max-width:480px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:slideUp .25s ease;}
-@media(min-width:720px){.sheet{border-radius:20px;}}
-@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:13px 22px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:var(--shadow-lg);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+try{
+  if(firebaseConfig.apiKey && firebaseConfig.apiKey !== "SUA_API_KEY"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    useFirebase = true;
+  }
+}catch(e){ console.warn("Firebase indisponível, usando modo local.", e); useFirebase = false; }
 
-.cart-head{padding:20px 22px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-100);}
-.cart-head h3{font-size:18px;}
-.close-x{width:32px;height:32px;border-radius:9px;background:var(--gray-100);color:var(--ink-soft);font-size:16px;}
-.detail-body{padding:22px;}
-.sum-row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink-soft);margin-bottom:6px;}
-.sum-row.total{font-size:17px;font-weight:700;color:var(--ink);margin-top:8px;font-family:var(--font-display);}
-.sum-row.total span:last-child{font-family:var(--font-mono);}
-.empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
-.empty-state .badge-diamond{width:14px;height:14px;margin-bottom:14px;}
-.status-badge{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em;}
-.status-badge.recebido{background:var(--amber-100);color:#9A6A0E;}
-.status-badge.preparo{background:#E3E0FA;color:#5B3FC9;}
-.status-badge.pronto{background:var(--teal-100);color:var(--teal);}
-.status-badge.entregue{background:var(--gray-100);color:var(--ink-soft);}
-.status-badge.cancelado{background:var(--red-100);color:var(--red);}
+/* =====================================================================
+   ESTADO / DADOS
+===================================================================== */
+let STATE = {
+  config: { storeName:"Sabor Direto", deliveryFee:6.0, isOpen:true, adminPassword:"admin123", categories:["Lanches","Bebidas","Sobremesas"] },
+  products: [],
+  orders: []
+};
+
+const STATUS_FLOW = ["recebido","preparo","pronto","entregue"];
+const STATUS_LABEL = {recebido:"Recebido", preparo:"Em preparo", pronto:"Pronto", entregue:"Entregue", cancelado:"Cancelado"};
+const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/`/g,'&#96;'); }
+function showToast(msg){
+  const t = document.getElementById("toast");
+  if(!t) return;
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+
+/* ---------- persistência: Firebase (com fallback localStorage) ---------- */
+const LS_KEY = "saborDireto_state_v1";
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ STATE = JSON.parse(raw); }
+    else { seedDemoData(); saveLocal(); }
+  }catch(e){ seedDemoData(); }
+}
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(STATE)); }catch(e){}
+}
+
+function seedDemoData(){
+  STATE.products = [
+    {id:uid(), name:"Cheeseburger Clássico", description:"Blend 160g, queijo cheddar, alface, tomate e molho da casa no pão brioche.", price:24.9, category:"Lanches", image:"", active:true},
+    {id:uid(), name:"Duplo Bacon", description:"Dois blends 120g, bacon crocante, cheddar e cebola caramelizada.", price:32.9, category:"Lanches", image:"", active:true},
+    {id:uid(), name:"Veggie Grelhado", description:"Hambúrguer de grão-de-bico, rúcula, tomate seco e maionese vegana.", price:26.5, category:"Lanches", image:"", active:true},
+    {id:uid(), name:"Refrigerante Lata", description:"350ml, gelado.", price:6.0, category:"Bebidas", image:"", active:true},
+    {id:uid(), name:"Suco Natural", description:"Laranja, limão ou maracujá — 500ml.", price:9.0, category:"Bebidas", image:"", active:true},
+    {id:uid(), name:"Brownie com Sorvete", description:"Brownie quente com bola de sorvete de creme e calda de chocolate.", price:16.0, category:"Sobremesas", image:"", active:true}
+  ];
+}
+
+function initData(onReady){
+  if(useFirebase){
+    db.collection("config").doc("settings").get().then(doc=>{
+      if(doc.exists) STATE.config = Object.assign(STATE.config, doc.data());
+      else db.collection("config").doc("settings").set(STATE.config);
+    }).catch(()=>{ handleFirestoreDown(onReady); });
+
+    db.collection("products").onSnapshot(snap=>{
+      STATE.products = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      if(STATE.products.length===0 && !window._seeded){
+        window._seeded = true;
+        seedDemoData();
+        STATE.products.forEach(p=>{ const {id, ...rest}=p; db.collection("products").doc(id).set(rest); });
+      }
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
+    db.collection("orders").orderBy("createdAt","desc").onSnapshot(snap=>{
+      STATE.orders = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
+    db.collection("config").doc("settings").onSnapshot(doc=>{
+      if(doc.exists){ STATE.config = Object.assign(STATE.config, doc.data()); onReady && onReady(); }
+    });
+
+    typeof setSyncStatus === "function" && setSyncStatus(true);
+  } else {
+    loadLocal();
+    typeof setSyncStatus === "function" && setSyncStatus(false);
+    onReady && onReady();
+  }
+}
+
+function handleFirestoreDown(onReady){
+  if(firestoreUnavailable) return;
+  firestoreUnavailable = true;
+  useFirebase = false;
+  showToast("Sem conexão com o Firebase — usando modo local.");
+  loadLocal();
+  typeof setSyncStatus === "function" && setSyncStatus(false);
+  onReady && onReady();
+}
+
+/* ---------- gravação (funciona igual nos dois modos) ---------- */
+function saveConfig(){
+  if(useFirebase){ db.collection("config").doc("settings").set(STATE.config).catch(()=>handleFirestoreDown()); }
+  else { saveLocal(); }
+}
+function saveProduct(p, onDone){
+  const {id, ...rest} = p;
+  if(useFirebase){
+    db.collection("products").doc(id).set(rest).then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
+  } else {
+    const idx = STATE.products.findIndex(x=>x.id===id);
+    if(idx>=0) STATE.products[idx]=p; else STATE.products.push(p);
+    saveLocal();
+    onDone && onDone();
+  }
+}
+function deleteProductData(id, onDone){
+  if(useFirebase){ db.collection("products").doc(id).delete().then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown()); }
+  else { STATE.products = STATE.products.filter(x=>x.id!==id); saveLocal(); onDone && onDone(); }
+}
+function createOrderData(order){
+  if(useFirebase){
+    return db.collection("orders").add(order).catch(()=>handleFirestoreDown());
+  } else {
+    order.id = uid();
+    STATE.orders.unshift(order);
+    saveLocal();
+    return Promise.resolve();
+  }
+}
+function updateOrderStatus(orderId, status, onDone){
+  if(useFirebase){
+    db.collection("orders").doc(orderId).update({status}).then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
+  } else {
+    const o = STATE.orders.find(x=>x.id===orderId);
+    if(o) o.status = status;
+    saveLocal();
+    onDone && onDone();
+  }
+}
