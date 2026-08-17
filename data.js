@@ -24,18 +24,30 @@ try{
    ESTADO / DADOS
 ===================================================================== */
 let STATE = {
-  config: { storeName:"Sabor Direto", deliveryFee:6.0, isOpen:true, adminPassword:"admin123", categories:["Lanches","Bebidas","Sobremesas"] },
+  config: {
+    storeName:"Sabor Direto",
+    deliveryFee:6.0,
+    isOpen:true,
+    adminPassword:"admin123",
+    categories:["Lanches","Bebidas","Sobremesas"],
+    whatsappNumber:"",
+    autoAcceptOrders:true
+  },
   products: [],
-  orders: []
+  combos: [],
+  promotions: [],
+  orders: [],
+  users: []
 };
 
 const STATUS_FLOW = ["recebido","preparo","pronto","entregue"];
-const STATUS_LABEL = {recebido:"Recebido", preparo:"Em preparo", pronto:"Pronto", entregue:"Entregue", cancelado:"Cancelado"};
+const STATUS_LABEL = {pendente:"Aguardando confirmação", recebido:"Recebido", preparo:"Em preparo", pronto:"Pronto", entregue:"Entregue", cancelado:"Cancelado"};
 const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
 function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g,'&#96;'); }
 function showToast(msg){
@@ -46,13 +58,56 @@ function showToast(msg){
   window._toastTimer = setTimeout(()=>t.classList.remove("show"), 2400);
 }
 
+/* ---------- promoções: ajuda de validade ---------- */
+function isPromotionActive(promo){
+  if(!promo.active) return false;
+  if(!promo.endDate) return true;
+  const end = new Date(promo.endDate+"T23:59:59");
+  return end.getTime() >= Date.now();
+}
+function activePromotions(){
+  return STATE.promotions.filter(isPromotionActive);
+}
+
+/* ---------- WhatsApp: montagem da mensagem do pedido ---------- */
+function buildWhatsAppMessage(order){
+  const lines = [];
+  lines.push(`*Novo pedido ${order.code}*`);
+  lines.push(`Cliente: ${order.customerName}`);
+  lines.push(`Telefone: ${order.phone}`);
+  lines.push(`Endereço: ${order.address}`);
+  lines.push("");
+  lines.push("Itens:");
+  order.items.forEach(it=>{
+    let line = `• ${it.qty}x ${it.name}${it.isCombo ? " (combo)" : ""} — ${money(it.price*it.qty)}`;
+    if(it.note) line += `\n   Obs: ${it.note}`;
+    lines.push(line);
+  });
+  lines.push("");
+  lines.push(`Subtotal: ${money(order.subtotal)}`);
+  lines.push(`Entrega: ${money(order.deliveryFee)}`);
+  lines.push(`*Total: ${money(order.total)}*`);
+  lines.push(`Pagamento: ${PAY_LABEL[order.payment]||order.payment}`);
+  return lines.join("\n");
+}
+function buildWhatsAppUrl(order){
+  const digits = (STATE.config.whatsappNumber||"").replace(/\D/g,"");
+  if(!digits) return null;
+  const text = encodeURIComponent(buildWhatsAppMessage(order));
+  return `https://wa.me/${digits}?text=${text}`;
+}
+
 /* ---------- persistência: Firebase (com fallback localStorage) ---------- */
 const LS_KEY = "saborDireto_state_v1";
 
 function loadLocal(){
   try{
     const raw = localStorage.getItem(LS_KEY);
-    if(raw){ STATE = JSON.parse(raw); }
+    if(raw){
+      const parsed = JSON.parse(raw);
+      STATE = Object.assign({combos:[], promotions:[], users:[]}, parsed);
+      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true}, STATE.config);
+    }
     else { seedDemoData(); saveLocal(); }
   }catch(e){ seedDemoData(); }
 }
@@ -88,6 +143,21 @@ function initData(onReady){
       onReady && onReady();
     }, ()=>handleFirestoreDown(onReady));
 
+    db.collection("combos").onSnapshot(snap=>{
+      STATE.combos = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
+    db.collection("promotions").onSnapshot(snap=>{
+      STATE.promotions = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
+    db.collection("users").onSnapshot(snap=>{
+      STATE.users = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
     db.collection("orders").orderBy("createdAt","desc").onSnapshot(snap=>{
       STATE.orders = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
       onReady && onReady();
@@ -120,21 +190,45 @@ function saveConfig(){
   if(useFirebase){ db.collection("config").doc("settings").set(STATE.config).catch(()=>handleFirestoreDown()); }
   else { saveLocal(); }
 }
-function saveProduct(p, onDone){
-  const {id, ...rest} = p;
-  if(useFirebase){
-    db.collection("products").doc(id).set(rest).then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
-  } else {
-    const idx = STATE.products.findIndex(x=>x.id===id);
-    if(idx>=0) STATE.products[idx]=p; else STATE.products.push(p);
-    saveLocal();
-    onDone && onDone();
-  }
+
+function makeCrud(collectionName, stateKey){
+  return {
+    save(item, onDone){
+      const {id, ...rest} = item;
+      if(useFirebase){
+        db.collection(collectionName).doc(id).set(rest).then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
+      } else {
+        const idx = STATE[stateKey].findIndex(x=>x.id===id);
+        if(idx>=0) STATE[stateKey][idx]=item; else STATE[stateKey].push(item);
+        saveLocal();
+        onDone && onDone();
+      }
+    },
+    remove(id, onDone){
+      if(useFirebase){
+        db.collection(collectionName).doc(id).delete().then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
+      } else {
+        STATE[stateKey] = STATE[stateKey].filter(x=>x.id!==id);
+        saveLocal();
+        onDone && onDone();
+      }
+    }
+  };
 }
-function deleteProductData(id, onDone){
-  if(useFirebase){ db.collection("products").doc(id).delete().then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown()); }
-  else { STATE.products = STATE.products.filter(x=>x.id!==id); saveLocal(); onDone && onDone(); }
-}
+const productsCrud = makeCrud("products","products");
+const combosCrud = makeCrud("combos","combos");
+const promotionsCrud = makeCrud("promotions","promotions");
+const usersCrud = makeCrud("users","users");
+
+function saveProduct(p, onDone){ productsCrud.save(p, onDone); }
+function deleteProductData(id, onDone){ productsCrud.remove(id, onDone); }
+function saveCombo(c, onDone){ combosCrud.save(c, onDone); }
+function deleteComboData(id, onDone){ combosCrud.remove(id, onDone); }
+function savePromotion(p, onDone){ promotionsCrud.save(p, onDone); }
+function deletePromotionData(id, onDone){ promotionsCrud.remove(id, onDone); }
+function saveUser(u, onDone){ usersCrud.save(u, onDone); }
+function deleteUserData(id, onDone){ usersCrud.remove(id, onDone); }
+
 function createOrderData(order){
   if(useFirebase){
     return db.collection("orders").add(order).catch(()=>handleFirestoreDown());

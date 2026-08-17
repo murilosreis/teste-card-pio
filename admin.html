@@ -12,7 +12,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <link rel="stylesheet" href="style.css">
 <style>
-/* ---------- estilos exclusivos do painel ---------- */
 #view-admin{min-height:100vh;background:var(--gray-50);}
 .admin-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .admin-login .login-card{max-width:380px;width:100%;padding:36px 30px;text-align:center;}
@@ -22,16 +21,18 @@
 .admin-login p{font-size:13.5px;color:var(--ink-soft);margin-bottom:22px;}
 
 .admin-shell{display:flex;min-height:100vh;}
-.admin-sidebar{width:230px;flex-shrink:0;background:var(--purple-900);color:var(--white);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;}
-.admin-sidebar .brand{padding:6px 8px 22px;display:flex;align-items:center;}
+.admin-sidebar{width:230px;flex-shrink:0;background:var(--purple-900);color:var(--white);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-sidebar .brand{padding:6px 8px 6px;display:flex;align-items:center;}
 .admin-sidebar .mark{width:30px;height:30px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
 .admin-sidebar .mark::after{content:"";position:absolute;inset:6px;background:var(--purple-900);border-radius:2px;}
 .admin-sidebar .brand-name{font-size:16px;color:var(--white);font-weight:700;margin-left:10px;}
-.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--gray-300);font-size:14px;font-weight:600;margin-bottom:2px;width:100%;text-align:left;}
+.logged-as{font-size:11.5px;color:var(--gray-300);padding:0 8px 16px;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--gray-300);font-size:14px;font-weight:600;margin-bottom:2px;width:100%;text-align:left;position:relative;}
 .nav-item .badge-diamond{background:var(--gray-300);}
 .nav-item.active{background:rgba(255,255,255,.1);color:var(--white);}
 .nav-item.active .badge-diamond{background:var(--gold-500);}
 .nav-item:hover{color:var(--white);}
+.nav-item .nav-alert-dot{position:absolute;right:10px;width:8px;height:8px;border-radius:50%;background:var(--orange);}
 .sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);}
 .sidebar-foot a,.sidebar-foot button{font-size:13px;color:var(--gray-300);padding:9px 12px;display:flex;align-items:center;gap:9px;width:100%;text-align:left;border-radius:9px;}
 .sidebar-foot a:hover,.sidebar-foot button:hover{color:var(--white);background:rgba(255,255,255,.06);}
@@ -43,6 +44,10 @@
 .sync-pill.on{background:var(--teal-100);color:var(--teal);}
 .sync-pill.off{background:var(--amber-100);color:#9A6A0E;}
 .sync-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+.new-order-banner{background:var(--orange);color:var(--white);padding:14px 18px;border-radius:14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow-md);animation:pulseBanner 1s ease infinite alternate;}
+@keyframes pulseBanner{from{opacity:1}to{opacity:.82}}
+.new-order-banner b{font-family:var(--font-display);}
 
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
 .kpi-card{padding:18px 20px;}
@@ -67,11 +72,13 @@
 .status-tab .n{font-family:var(--font-mono);opacity:.75;margin-left:4px;}
 .order-list{display:grid;gap:12px;}
 .order-card{padding:16px 18px;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.order-card.is-pendente{border:2px solid var(--orange);}
 .order-card .oc-code{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--purple-700);background:var(--gray-100);padding:5px 10px;border-radius:8px;flex-shrink:0;}
 .order-card .oc-main{flex:1;min-width:180px;}
 .order-card .oc-name{font-weight:700;font-size:14.5px;}
 .order-card .oc-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
 .order-card .oc-items{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+.order-card .oc-note{color:var(--purple-700);font-weight:600;}
 .order-card .oc-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
 .order-card .oc-total{font-family:var(--font-mono);font-weight:700;}
 
@@ -91,6 +98,10 @@
 .cat-manage-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
 .cat-manage-item{display:flex;align-items:center;gap:8px;background:var(--gray-100);padding:7px 8px 7px 14px;border-radius:999px;font-size:13px;font-weight:600;}
 .cat-manage-item button{color:var(--red);font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--white);}
+
+.check-list{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:10px;padding:10px 12px;}
+.check-list label{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:4px 0;}
+.expired-tag{font-size:11px;font-weight:700;color:var(--red);background:var(--red-100);padding:3px 8px;border-radius:6px;}
 
 /* ajuda */
 .help-intro{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:22px;max-width:620px;}
@@ -123,13 +134,17 @@ canvas{max-width:100%;}
     <div class="card login-card">
       <div class="mark-big"></div>
       <h2>Painel administrativo</h2>
-      <p>Entre com a senha para acessar pedidos, cardápio e vendas.</p>
+      <p>Entre com seu nome de usuário e senha, ou só a senha mestre.</p>
+      <div class="field" style="text-align:left">
+        <label>Nome de usuário (deixe em branco para administrador master)</label>
+        <input type="text" id="adminNameInput" placeholder="Seu nome">
+      </div>
       <div class="field" style="text-align:left">
         <label>Senha</label>
         <input type="password" id="adminPassInput" placeholder="••••••" onkeydown="if(event.key==='Enter')tryAdminLogin()">
       </div>
       <button class="btn btn-primary btn-block" onclick="tryAdminLogin()">Entrar</button>
-      <p style="font-size:11.5px;color:var(--gray-300);margin-top:18px">Senha padrão inicial: <b>admin123</b> — altere em Configurações.</p>
+      <p style="font-size:11.5px;color:var(--gray-300);margin-top:18px">Senha mestre inicial: <b>admin123</b> — altere em Configurações.</p>
     </div>
   </div>
 
@@ -141,9 +156,13 @@ canvas{max-width:100%;}
     </div>
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="brand"><span class="mark"></span><span class="brand-name" id="storeNameLabelAdmin">Sabor Direto</span></div>
+      <div class="logged-as" id="loggedAsLabel">Logado como Administrador</div>
       <button class="nav-item" data-tab="overview" onclick="setAdminTab('overview')"><span class="badge-diamond"></span>Visão geral</button>
-      <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos</button>
+      <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos<span class="nav-alert-dot hidden" id="ordersAlertDot"></span></button>
       <button class="nav-item" data-tab="menu" onclick="setAdminTab('menu')"><span class="badge-diamond"></span>Cardápio</button>
+      <button class="nav-item" data-tab="combos" onclick="setAdminTab('combos')"><span class="badge-diamond"></span>Combos</button>
+      <button class="nav-item" data-tab="promotions" onclick="setAdminTab('promotions')"><span class="badge-diamond"></span>Promoções</button>
+      <button class="nav-item" data-tab="users" onclick="setAdminTab('users')"><span class="badge-diamond"></span>Usuários</button>
       <button class="nav-item" data-tab="settings" onclick="setAdminTab('settings')"><span class="badge-diamond"></span>Configurações</button>
       <button class="nav-item" data-tab="ajuda" onclick="setAdminTab('ajuda')"><span class="badge-diamond"></span>Ajuda</button>
       <div class="sidebar-foot">
@@ -188,6 +207,7 @@ canvas{max-width:100%;}
 
       <section id="tab-orders" class="hidden">
         <div class="admin-topbar"><h1>Fila de pedidos</h1></div>
+        <div id="newOrderBannerWrap"></div>
         <div class="status-tabs" id="orderStatusTabs"></div>
         <div class="order-list" id="orderList"></div>
       </section>
@@ -214,6 +234,49 @@ canvas{max-width:100%;}
         </div>
       </section>
 
+      <section id="tab-combos" class="hidden">
+        <div class="admin-topbar"><h1>Combos</h1></div>
+        <div class="admin-toolbar">
+          <div class="pill" style="background:var(--gray-100);color:var(--ink-soft)" id="comboCountPill">0 combos</div>
+          <button class="btn btn-primary btn-sm" onclick="openComboForm()">+ Novo combo</button>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="prod-table">
+            <thead><tr><th></th><th>Combo</th><th>Itens</th><th>Preço</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="comboTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-promotions" class="hidden">
+        <div class="admin-topbar"><h1>Promoções</h1></div>
+        <div class="admin-toolbar">
+          <div class="pill" style="background:var(--gray-100);color:var(--ink-soft)" id="promoCountPill">0 promoções</div>
+          <button class="btn btn-primary btn-sm" onclick="openPromotionForm()">+ Nova promoção</button>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="prod-table">
+            <thead><tr><th>Promoção</th><th>Item</th><th>Preço promo</th><th>Válida até</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="promoTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-users" class="hidden">
+        <div class="admin-topbar"><h1>Usuários do painel</h1></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;max-width:600px">Cada usuário cadastrado aqui pode entrar no painel com o próprio nome e senha. A senha mestre em Configurações continua funcionando como acesso de administrador, independente desta lista.</p>
+        <div class="admin-toolbar">
+          <div class="pill" style="background:var(--gray-100);color:var(--ink-soft)" id="userCountPill">0 usuários</div>
+          <button class="btn btn-primary btn-sm" onclick="openUserForm()">+ Novo usuário</button>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="prod-table">
+            <thead><tr><th>Nome</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="tab-settings" class="hidden">
         <div class="admin-topbar"><h1>Configurações</h1></div>
         <div class="dash-grid">
@@ -224,12 +287,19 @@ canvas{max-width:100%;}
             <div class="field"><label>Status</label>
               <select id="cfgOpen"><option value="1">Loja aberta</option><option value="0">Loja fechada</option></select>
             </div>
+            <div class="field"><label>WhatsApp para receber pedidos (com DDI e DDD, só números)</label><input id="cfgWhatsapp" placeholder="Ex.: 5573999999999"></div>
+            <div class="field"><label>Confirmação de pedidos</label>
+              <select id="cfgAutoAccept">
+                <option value="1">Aceitar pedidos automaticamente</option>
+                <option value="0">Só aceitar quando eu confirmar no painel</option>
+              </select>
+            </div>
             <button class="btn btn-primary" onclick="saveSettings()">Salvar alterações</button>
           </div>
           <div class="card panel">
             <h3>Segurança</h3>
-            <div class="field"><label>Nova senha do painel</label><input id="cfgNewPass" type="password" placeholder="Deixe em branco para manter"></div>
-            <button class="btn btn-ghost" onclick="changeAdminPassword()">Alterar senha</button>
+            <div class="field"><label>Nova senha mestre do painel</label><input id="cfgNewPass" type="password" placeholder="Deixe em branco para manter"></div>
+            <button class="btn btn-ghost" onclick="changeAdminPassword()">Alterar senha mestre</button>
             <h3 style="margin-top:26px">Sincronização</h3>
             <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
               <span id="syncExplainer">Verificando conexão com o Firebase…</span>
@@ -241,7 +311,7 @@ canvas{max-width:100%;}
       <section id="tab-ajuda" class="hidden">
         <div class="admin-topbar"><h1>Como colocar foto nos produtos</h1></div>
         <div class="card panel">
-          <p class="help-intro">O cardápio mostra a foto que estiver salva no campo "URL da imagem" de cada produto. Como este site é hospedado de forma simples (sem servidor próprio de arquivos), a foto precisa estar hospedada em algum lugar da internet antes — e você só cola o link dela aqui no painel. Veja o passo a passo:</p>
+          <p class="help-intro">O cardápio mostra a foto que estiver salva no campo "URL da imagem" de cada produto ou combo. Como este site é hospedado de forma simples (sem servidor próprio de arquivos), a foto precisa estar hospedada em algum lugar da internet antes — e você só cola o link dela aqui no painel. Veja o passo a passo:</p>
           <div class="help-steps">
             <div class="help-step">
               <div class="hs-num">1</div>
@@ -267,15 +337,15 @@ canvas{max-width:100%;}
             <div class="help-step">
               <div class="hs-num">4</div>
               <div class="hs-body">
-                <h4>Volte para a aba Cardápio deste painel</h4>
-                <p>Clique em <code>Cardápio</code> no menu lateral. Para um produto novo, clique em <code>+ Novo produto</code>. Para um produto que já existe, clique no ícone de lápis (✎) na linha dele.</p>
+                <h4>Volte para a aba Cardápio ou Combos deste painel</h4>
+                <p>Clique em <code>Cardápio</code> (ou <code>Combos</code>) no menu lateral. Para um item novo, clique em <code>+ Novo produto</code> ou <code>+ Novo combo</code>. Para um item que já existe, clique no ícone de lápis (✎) na linha dele.</p>
               </div>
             </div>
             <div class="help-step">
               <div class="hs-num">5</div>
               <div class="hs-body">
                 <h4>Cole o link no campo "URL da imagem"</h4>
-                <p>Cole o link copiado do ImgBB nesse campo e clique em <code>Salvar alterações</code> (ou <code>Adicionar produto</code>). A foto já aparece no cardápio público na hora.</p>
+                <p>Cole o link copiado do ImgBB nesse campo e clique em <code>Salvar alterações</code> (ou <code>Adicionar</code>). A foto já aparece no cardápio público na hora.</p>
               </div>
             </div>
           </div>
@@ -292,23 +362,39 @@ canvas{max-width:100%;}
 <script>
 let adminTab = "overview";
 let orderStatusFilter = "todos";
+let loggedUserName = "Administrador";
+let knownOrderIds = null; // null = ainda não carregou a primeira vez
+let alertedOrderIds = new Set();
 
 function tryAdminLogin(){
-  const val = document.getElementById("adminPassInput").value;
-  if(val === STATE.config.adminPassword){
+  const name = document.getElementById("adminNameInput").value.trim();
+  const pass = document.getElementById("adminPassInput").value;
+  if(pass === STATE.config.adminPassword){
+    loggedUserName = "Administrador";
     sessionStorage.setItem("sd_admin_logged","1");
+    sessionStorage.setItem("sd_admin_name", loggedUserName);
     showAdminShell();
-  } else {
-    showToast("Senha incorreta.");
+    return;
   }
+  const user = STATE.users.find(u=>u.active && u.name.trim().toLowerCase()===name.toLowerCase() && u.password===pass && name);
+  if(user){
+    loggedUserName = user.name;
+    sessionStorage.setItem("sd_admin_logged","1");
+    sessionStorage.setItem("sd_admin_name", loggedUserName);
+    showAdminShell();
+    return;
+  }
+  showToast("Usuário ou senha incorretos.");
 }
 function showAdminShell(){
   document.getElementById("adminLoginScreen").classList.add("hidden");
   document.getElementById("adminShell").classList.remove("hidden");
+  document.getElementById("loggedAsLabel").textContent = "Logado como " + loggedUserName;
   renderAdmin();
 }
 function adminLogout(){
   sessionStorage.removeItem("sd_admin_logged");
+  sessionStorage.removeItem("sd_admin_name");
   document.getElementById("adminShell").classList.add("hidden");
   document.getElementById("adminLoginScreen").classList.remove("hidden");
 }
@@ -330,11 +416,16 @@ function setSyncStatus(on){
 
 function setAdminTab(tab){
   adminTab = tab;
-  ["overview","orders","menu","settings","ajuda"].forEach(t=>{
+  ["overview","orders","menu","combos","promotions","users","settings","ajuda"].forEach(t=>{
     document.getElementById("tab-"+t).classList.toggle("hidden", t!==tab);
   });
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.tab===tab));
   document.getElementById("adminSidebar").classList.remove("open");
+  if(tab==="orders"){
+    document.getElementById("ordersAlertDot").classList.add("hidden");
+    alertedOrderIds.clear();
+    document.getElementById("newOrderBannerWrap").innerHTML = "";
+  }
   renderAdmin();
 }
 
@@ -342,10 +433,68 @@ function renderAdmin(){
   if(document.getElementById("adminShell").classList.contains("hidden")) return;
   setSyncStatus(useFirebase && !firestoreUnavailable);
   document.getElementById("storeNameLabelAdmin").textContent = STATE.config.storeName;
+  checkForNewOrders();
   if(adminTab==="overview") renderOverview();
   if(adminTab==="orders") renderOrders();
   if(adminTab==="menu") renderMenuAdmin();
+  if(adminTab==="combos") renderCombosAdmin();
+  if(adminTab==="promotions") renderPromotionsAdmin();
+  if(adminTab==="users") renderUsersAdmin();
   if(adminTab==="settings") renderSettings();
+}
+
+/* =====================================================================
+   ALERTA DE NOVO PEDIDO (som + visual)
+===================================================================== */
+function playAlertSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0,1].forEach(i=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + i*0.35);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + i*0.35 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.35 + 0.3);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i*0.35);
+      osc.stop(ctx.currentTime + i*0.35 + 0.32);
+    });
+  }catch(e){ /* navegador pode bloquear áudio sem interação prévia — sem problema, o alerta visual continua */ }
+}
+function checkForNewOrders(){
+  const currentIds = STATE.orders.map(o=>o.id);
+  if(knownOrderIds === null){
+    knownOrderIds = new Set(currentIds);
+    return;
+  }
+  const freshIds = currentIds.filter(id=>!knownOrderIds.has(id));
+  knownOrderIds = new Set(currentIds);
+  if(freshIds.length === 0) return;
+  const freshOrders = STATE.orders.filter(o=>freshIds.includes(o.id));
+  freshOrders.forEach(o=>alertedOrderIds.add(o.id));
+  playAlertSound();
+  const dot = document.getElementById("ordersAlertDot");
+  if(adminTab !== "orders") dot.classList.remove("hidden");
+  showToast(freshOrders.length===1 ? `🔔 Novo pedido: ${freshOrders[0].code}` : `🔔 ${freshOrders.length} novos pedidos`);
+  if(adminTab === "orders") renderNewOrderBanner();
+  document.title = "🔔 Novo pedido — Painel";
+  clearTimeout(window._titleResetTimer);
+  window._titleResetTimer = setTimeout(()=>{ document.title = "Painel administrativo — Sabor Direto"; }, 6000);
+}
+function renderNewOrderBanner(){
+  const wrap = document.getElementById("newOrderBannerWrap");
+  if(!wrap) return;
+  if(alertedOrderIds.size===0){ wrap.innerHTML=""; return; }
+  wrap.innerHTML = `<div class="new-order-banner">
+    <span>🔔 <b>${alertedOrderIds.size}</b> ${alertedOrderIds.size===1?'novo pedido chegou':'novos pedidos chegaram'}</span>
+    <button class="btn btn-block" style="background:rgba(255,255,255,.2);color:#fff;width:auto;padding:8px 14px" onclick="dismissNewOrderBanner()">OK</button>
+  </div>`;
+}
+function dismissNewOrderBanner(){
+  alertedOrderIds.clear();
+  document.getElementById("newOrderBannerWrap").innerHTML = "";
 }
 
 function ordersForDay(dateStr){ return STATE.orders.filter(o=>o.dateStr===dateStr && o.status!=="cancelado"); }
@@ -393,7 +542,7 @@ function renderOverview(){
     `<div class="top-product-row"><span class="tp-name">${escapeHtml(name)}</span><span class="tp-count">${count}x</span></div>`
   ).join("") : `<p style="font-size:13px;color:var(--ink-soft)">Sem vendas no período.</p>`;
 
-  const statusCounts = {recebido:0,preparo:0,pronto:0,entregue:0,cancelado:0};
+  const statusCounts = {pendente:0,recebido:0,preparo:0,pronto:0,entregue:0,cancelado:0};
   STATE.orders.filter(o=>o.dateStr===today).forEach(o=>statusCounts[o.status]=(statusCounts[o.status]||0)+1);
   document.getElementById("statusBreakdown").innerHTML = Object.entries(statusCounts).map(([s,c])=>
     `<div class="top-product-row"><span class="status-badge ${s}">${STATUS_LABEL[s]}</span><span class="tp-count">${c}</span></div>`
@@ -445,9 +594,10 @@ function roundRect(ctx,x,y,w,h,r){
 }
 
 function renderOrders(){
+  renderNewOrderBanner();
   const counts = {todos: STATE.orders.length};
-  STATUS_FLOW.concat("cancelado").forEach(s=>counts[s]=STATE.orders.filter(o=>o.status===s).length);
-  const tabs = [["todos","Todos"], ["recebido","Recebido"], ["preparo","Em preparo"], ["pronto","Pronto"], ["entregue","Entregue"], ["cancelado","Cancelado"]];
+  ["pendente"].concat(STATUS_FLOW).concat("cancelado").forEach(s=>counts[s]=STATE.orders.filter(o=>o.status===s).length);
+  const tabs = [["todos","Todos"], ["pendente","Pendentes"], ["recebido","Recebido"], ["preparo","Em preparo"], ["pronto","Pronto"], ["entregue","Entregue"], ["cancelado","Cancelado"]];
   document.getElementById("orderStatusTabs").innerHTML = tabs.map(([key,label])=>
     `<button class="status-tab ${orderStatusFilter===key?'active':''}" onclick="setOrderFilter('${key}')">${label}<span class="n">${counts[key]||0}</span></button>`
   ).join("");
@@ -457,21 +607,29 @@ function renderOrders(){
 
   document.getElementById("orderList").innerHTML = list.length ? list.map(o=>{
     const time = new Date(o.createdAt).toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
-    const itemsTxt = o.items.map(it=>`${it.qty}x ${it.name}`).join(", ");
-    const nextIdx = STATUS_FLOW.indexOf(o.status);
-    const nextStatus = nextIdx>=0 && nextIdx<STATUS_FLOW.length-1 ? STATUS_FLOW[nextIdx+1] : null;
-    return `<div class="card order-card">
+    const itemsTxt = o.items.map(it=>{
+      let t = `${it.qty}x ${it.name}${it.isCombo?' (combo)':''}`;
+      if(it.note) t += ` — <span class="oc-note">Obs: ${escapeHtml(it.note)}</span>`;
+      return t;
+    }).join("<br>");
+    let nextStatus = null, nextLabel = "";
+    if(o.status==="pendente"){ nextStatus = "recebido"; nextLabel = "Aceitar pedido"; }
+    else {
+      const nextIdx = STATUS_FLOW.indexOf(o.status);
+      if(nextIdx>=0 && nextIdx<STATUS_FLOW.length-1){ nextStatus = STATUS_FLOW[nextIdx+1]; nextLabel = "Marcar "+STATUS_LABEL[nextStatus].toLowerCase(); }
+    }
+    return `<div class="card order-card ${o.status==='pendente'?'is-pendente':''}">
       <div class="oc-code">${o.code}</div>
       <div class="oc-main">
         <div class="oc-name">${escapeHtml(o.customerName)}</div>
         <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
-        <div class="oc-items">${escapeHtml(itemsTxt)}</div>
+        <div class="oc-items">${itemsTxt}</div>
         <div class="oc-meta" style="margin-top:4px">${escapeHtml(o.address)}</div>
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
         <span class="oc-total">${money(o.total)}</span>
-        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${o.id}','${nextStatus}',renderOrders)">Marcar ${STATUS_LABEL[nextStatus].toLowerCase()}</button>` : ""}
+        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${o.id}','${nextStatus}',renderOrders)">${nextLabel}</button>` : ""}
         ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
       </div>
     </div>`;
@@ -479,6 +637,7 @@ function renderOrders(){
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
 
+/* ---------- cardápio (produtos) ---------- */
 function renderMenuAdmin(){
   document.getElementById("catManageList").innerHTML = STATE.config.categories.map(c=>
     `<div class="cat-manage-item">${escapeHtml(c)}<button onclick="removeCategory('${escapeAttr(c)}')">✕</button></div>`
@@ -555,15 +714,196 @@ function submitProductForm(id, editing){
   saveProduct(product, ()=>{ closeScrim(); showToast(editing ? "Produto atualizado." : "Produto adicionado."); renderMenuAdmin(); });
 }
 
+/* ---------- combos ---------- */
+function renderCombosAdmin(){
+  document.getElementById("comboCountPill").textContent = STATE.combos.length + (STATE.combos.length===1?" combo":" combos");
+  document.getElementById("comboTableBody").innerHTML = STATE.combos.map(c=>{
+    const itemNames = (c.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean);
+    return `<tr>
+      <td>${c.image?`<img class="prod-thumb" src="${escapeAttr(c.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍔</div>`}</td>
+      <td><b>${escapeHtml(c.name)}</b></td>
+      <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemNames.join(", ")||"—")}</td>
+      <td style="font-family:var(--font-mono)">${money(c.price)}</td>
+      <td><button class="toggle ${c.active?'on':''}" onclick="toggleComboActive('${c.id}')"></button></td>
+      <td>
+        <button class="icon-btn" onclick="openComboForm('${c.id}')">✎</button>
+        <button class="icon-btn danger" onclick="deleteCombo('${c.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum combo cadastrado ainda.</td></tr>`;
+}
+function toggleComboActive(id){
+  const c = STATE.combos.find(x=>x.id===id);
+  if(!c) return;
+  c.active = !c.active;
+  saveCombo(c, renderCombosAdmin);
+}
+function deleteCombo(id){
+  if(!confirm("Remover este combo?")) return;
+  deleteComboData(id, renderCombosAdmin);
+}
+function openComboForm(id){
+  const editing = id ? STATE.combos.find(x=>x.id===id) : null;
+  const c = editing || {id: uid(), name:"", description:"", price:"", image:"", productIds:[], active:true};
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${editing?"Editar combo":"Novo combo"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <div class="field"><label>Nome do combo</label><input id="cfName" value="${escapeAttr(c.name)}"></div>
+        <div class="field"><label>Descrição</label><textarea id="cfDesc">${escapeHtml(c.description)}</textarea></div>
+        <div class="field"><label>Preço do combo (R$)</label><input id="cfPrice" type="number" step="0.01" min="0" value="${c.price}"></div>
+        <div class="field"><label>URL da imagem (opcional)</label><input id="cfImage" value="${escapeAttr(c.image||"")}" placeholder="https://..."></div>
+        <div class="field"><label>Produtos incluídos no combo</label>
+          <div class="check-list">
+            ${STATE.products.length ? STATE.products.map(p=>`
+              <label><input type="checkbox" value="${p.id}" ${(c.productIds||[]).includes(p.id)?'checked':''} class="cf-item-check"> ${escapeHtml(p.name)}</label>
+            `).join("") : `<span style="font-size:13px;color:var(--ink-soft)">Cadastre produtos primeiro na aba Cardápio.</span>`}
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="submitComboForm('${c.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar combo"}</button>
+      </div>
+    </div>`);
+}
+function submitComboForm(id, editing){
+  const name = document.getElementById("cfName").value.trim();
+  const description = document.getElementById("cfDesc").value.trim();
+  const price = parseFloat(document.getElementById("cfPrice").value);
+  const image = document.getElementById("cfImage").value.trim();
+  const productIds = [...document.querySelectorAll(".cf-item-check:checked")].map(el=>el.value);
+  if(!name || isNaN(price)){ showToast("Preencha nome e preço."); return; }
+  const existing = editing ? STATE.combos.find(x=>x.id===id) : null;
+  const combo = {id, name, description, price, image, productIds, active: existing ? existing.active : true};
+  saveCombo(combo, ()=>{ closeScrim(); showToast(editing ? "Combo atualizado." : "Combo adicionado."); renderCombosAdmin(); });
+}
+
+/* ---------- promoções ---------- */
+function renderPromotionsAdmin(){
+  document.getElementById("promoCountPill").textContent = STATE.promotions.length + (STATE.promotions.length===1?" promoção":" promoções");
+  document.getElementById("promoTableBody").innerHTML = STATE.promotions.map(p=>{
+    const base = p.refType==="combo" ? STATE.combos.find(x=>x.id===p.refId) : STATE.products.find(x=>x.id===p.refId);
+    const expired = p.endDate && new Date(p.endDate+"T23:59:59").getTime() < Date.now();
+    return `<tr>
+      <td><b>${escapeHtml(p.title)}</b></td>
+      <td>${base ? escapeHtml(base.name) + (p.refType==='combo'?' (combo)':'') : '<span style="color:var(--red)">item removido</span>'}</td>
+      <td style="font-family:var(--font-mono)">${p.price!==null && p.price!==undefined && p.price!=="" ? money(p.price) : '—'}</td>
+      <td>${p.endDate ? formatDateBR(p.endDate) : 'sem prazo'} ${expired?'<span class="expired-tag">Expirada</span>':''}</td>
+      <td><button class="toggle ${p.active?'on':''}" onclick="togglePromotionActive('${p.id}')"></button></td>
+      <td>
+        <button class="icon-btn" onclick="openPromotionForm('${p.id}')">✎</button>
+        <button class="icon-btn danger" onclick="deletePromotion('${p.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhuma promoção cadastrada ainda.</td></tr>`;
+}
+function togglePromotionActive(id){
+  const p = STATE.promotions.find(x=>x.id===id);
+  if(!p) return;
+  p.active = !p.active;
+  savePromotion(p, renderPromotionsAdmin);
+}
+function deletePromotion(id){
+  if(!confirm("Remover esta promoção?")) return;
+  deletePromotionData(id, renderPromotionsAdmin);
+}
+function openPromotionForm(id){
+  const editing = id ? STATE.promotions.find(x=>x.id===id) : null;
+  const p = editing || {id: uid(), title:"", description:"", refType:"product", refId:"", price:"", image:"", endDate:"", active:true};
+  const allItems = [
+    ...STATE.products.map(x=>({id:x.id, label:x.name, type:"product"})),
+    ...STATE.combos.map(x=>({id:x.id, label:x.name+" (combo)", type:"combo"}))
+  ];
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${editing?"Editar promoção":"Nova promoção"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <div class="field"><label>Título da promoção</label><input id="pmTitle" value="${escapeAttr(p.title)}" placeholder="Ex.: Terça do Bacon"></div>
+        <div class="field"><label>Produto ou combo em promoção</label>
+          <select id="pmRef">
+            <option value="">Selecione...</option>
+            ${allItems.map(it=>`<option value="${it.type}|${it.id}" ${p.refType===it.type && p.refId===it.id ? 'selected':''}>${escapeHtml(it.label)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field"><label>Preço promocional (R$) — opcional, deixe em branco para manter o preço normal só em destaque</label><input id="pmPrice" type="number" step="0.01" min="0" value="${p.price ?? ''}"></div>
+        <div class="field"><label>Data de término da promoção</label><input id="pmEndDate" type="date" value="${p.endDate||''}"></div>
+        <div class="field"><label>Imagem (opcional — se vazio, usa a imagem do item)</label><input id="pmImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
+        <button class="btn btn-primary btn-block" onclick="submitPromotionForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Criar promoção"}</button>
+      </div>
+    </div>`);
+}
+function submitPromotionForm(id, editing){
+  const title = document.getElementById("pmTitle").value.trim();
+  const refVal = document.getElementById("pmRef").value;
+  const priceRaw = document.getElementById("pmPrice").value;
+  const endDate = document.getElementById("pmEndDate").value;
+  const image = document.getElementById("pmImage").value.trim();
+  if(!title || !refVal){ showToast("Preencha o título e escolha o item da promoção."); return; }
+  const [refType, refId] = refVal.split("|");
+  const price = priceRaw === "" ? null : parseFloat(priceRaw);
+  const existing = editing ? STATE.promotions.find(x=>x.id===id) : null;
+  const promo = {id, title, refType, refId, price, endDate, image, active: existing ? existing.active : true};
+  savePromotion(promo, ()=>{ closeScrim(); showToast(editing ? "Promoção atualizada." : "Promoção criada."); renderPromotionsAdmin(); });
+}
+
+/* ---------- usuários ---------- */
+function renderUsersAdmin(){
+  document.getElementById("userCountPill").textContent = STATE.users.length + (STATE.users.length===1?" usuário":" usuários");
+  document.getElementById("userTableBody").innerHTML = STATE.users.map(u=>`
+    <tr>
+      <td><b>${escapeHtml(u.name)}</b></td>
+      <td><button class="toggle ${u.active?'on':''}" onclick="toggleUserActive('${u.id}')"></button></td>
+      <td>
+        <button class="icon-btn" onclick="openUserForm('${u.id}')">✎</button>
+        <button class="icon-btn danger" onclick="deleteUser('${u.id}')">🗑</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="3" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum usuário cadastrado ainda.</td></tr>`;
+}
+function toggleUserActive(id){
+  const u = STATE.users.find(x=>x.id===id);
+  if(!u) return;
+  u.active = !u.active;
+  saveUser(u, renderUsersAdmin);
+}
+function deleteUser(id){
+  if(!confirm("Remover este usuário do painel?")) return;
+  deleteUserData(id, renderUsersAdmin);
+}
+function openUserForm(id){
+  const editing = id ? STATE.users.find(x=>x.id===id) : null;
+  const u = editing || {id: uid(), name:"", password:"", active:true};
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${editing?"Editar usuário":"Novo usuário"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <div class="field"><label>Nome</label><input id="ufName" value="${escapeAttr(u.name)}"></div>
+        <div class="field"><label>Senha</label><input id="ufPass" type="text" value="${escapeAttr(u.password)}" placeholder="Defina uma senha simples"></div>
+        <button class="btn btn-primary btn-block" onclick="submitUserForm('${u.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar usuário"}</button>
+      </div>
+    </div>`);
+}
+function submitUserForm(id, editing){
+  const name = document.getElementById("ufName").value.trim();
+  const password = document.getElementById("ufPass").value;
+  if(!name || !password){ showToast("Preencha nome e senha."); return; }
+  const existing = editing ? STATE.users.find(x=>x.id===id) : null;
+  const user = {id, name, password, active: existing ? existing.active : true};
+  saveUser(user, ()=>{ closeScrim(); showToast(editing ? "Usuário atualizado." : "Usuário adicionado."); renderUsersAdmin(); });
+}
+
+/* ---------- configurações ---------- */
 function renderSettings(){
   document.getElementById("cfgStoreName").value = STATE.config.storeName;
   document.getElementById("cfgDeliveryFee").value = STATE.config.deliveryFee;
   document.getElementById("cfgOpen").value = STATE.config.isOpen ? "1" : "0";
+  document.getElementById("cfgWhatsapp").value = STATE.config.whatsappNumber || "";
+  document.getElementById("cfgAutoAccept").value = STATE.config.autoAcceptOrders === false ? "0" : "1";
 }
 function saveSettings(){
   STATE.config.storeName = document.getElementById("cfgStoreName").value.trim() || "Minha Loja";
   STATE.config.deliveryFee = parseFloat(document.getElementById("cfgDeliveryFee").value) || 0;
   STATE.config.isOpen = document.getElementById("cfgOpen").value === "1";
+  STATE.config.whatsappNumber = document.getElementById("cfgWhatsapp").value.replace(/\D/g,"");
+  STATE.config.autoAcceptOrders = document.getElementById("cfgAutoAccept").value === "1";
   saveConfig();
   showToast("Configurações salvas.");
 }
@@ -573,10 +913,10 @@ function changeAdminPassword(){
   STATE.config.adminPassword = val;
   saveConfig();
   document.getElementById("cfgNewPass").value = "";
-  showToast("Senha alterada.");
+  showToast("Senha mestre alterada.");
 }
 
-/* ---------- scrim helper (usado pelo formulário de produto) ---------- */
+/* ---------- scrim helper ---------- */
 function openScrim(innerHtml){
   closeScrim();
   const div = document.createElement("div");
@@ -592,6 +932,7 @@ function closeScrim(){ const s = document.getElementById("activeScrim"); if(s) s
 ===================================================================== */
 initData(renderAdmin);
 if(sessionStorage.getItem("sd_admin_logged") === "1"){
+  loggedUserName = sessionStorage.getItem("sd_admin_name") || "Administrador";
   showAdminShell();
 }
 </script>

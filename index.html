@@ -28,6 +28,19 @@
 .store-status .pill{background:rgba(255,255,255,.14);color:var(--white);}
 .store-status .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;}
 
+/* faixa de promoções */
+.promo-bar{background:var(--gold-100);padding:14px 0;border-bottom:1px solid var(--gray-200);}
+.promo-bar-inner{display:flex;gap:12px;overflow-x:auto;padding:0 20px;scrollbar-width:none;}
+.promo-bar-inner::-webkit-scrollbar{display:none;}
+.promo-card{flex-shrink:0;width:190px;background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;}
+.promo-card img{width:100%;height:110px;object-fit:cover;background:var(--gray-100);}
+.promo-img-placeholder{width:100%;height:110px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:28px;}
+.promo-body{padding:10px 12px 12px;}
+.promo-title{font-weight:700;font-size:13.5px;margin-bottom:4px;line-height:1.3;}
+.promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:14px;}
+.promo-price .strike{text-decoration:line-through;color:var(--gray-300);font-weight:500;font-size:12px;margin-right:6px;}
+.promo-until{font-size:11px;color:var(--red);font-weight:700;margin-top:5px;}
+
 .cat-nav{position:sticky;top:0;z-index:30;background:var(--gray-50);border-bottom:1px solid var(--gray-200);padding:12px 0;}
 .cat-nav-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px;}
 .cat-nav-inner::-webkit-scrollbar{display:none;}
@@ -44,6 +57,7 @@
 .product-img.placeholder{display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:34px;}
 .product-body{padding:14px 15px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
 .product-name{font-size:15.5px;font-weight:700;font-family:var(--font-display);}
+.combo-tag{background:var(--gold-500);color:var(--purple-900);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle;text-transform:uppercase;}
 .product-desc{font-size:13px;color:var(--ink-soft);line-height:1.4;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .product-foot{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
 .product-price{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--purple-700);}
@@ -52,7 +66,9 @@
 
 .detail-img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--gray-100);}
 .detail-body h3{font-size:20px;margin-bottom:8px;}
-.detail-body .desc{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin-bottom:18px;}
+.detail-body .desc{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin-bottom:10px;}
+.combo-includes{font-size:13px;color:var(--ink-soft);background:var(--gray-50);padding:10px 12px;border-radius:10px;margin-bottom:14px;}
+.promo-tag-line{color:var(--red);font-weight:700;font-size:12.5px;margin-bottom:10px;}
 .qty-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .qty-control{display:flex;align-items:center;gap:14px;background:var(--gray-100);border-radius:12px;padding:6px 8px;}
 .qty-control button{width:32px;height:32px;border-radius:8px;background:var(--white);font-size:18px;font-weight:700;color:var(--purple-700);box-shadow:var(--shadow-sm);}
@@ -66,6 +82,7 @@
 .cart-item .ci-info{flex:1;min-width:0;}
 .cart-item .ci-name{font-size:14px;font-weight:600;}
 .cart-item .ci-price{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+.cart-item .ci-note{font-size:12px;color:var(--purple-700);background:var(--gray-100);padding:4px 8px;border-radius:7px;margin-top:6px;display:inline-block;}
 .cart-item .ci-qty{display:flex;align-items:center;gap:8px;margin-top:8px;}
 .cart-item .ci-qty button{width:24px;height:24px;border-radius:6px;background:var(--gray-100);font-weight:700;}
 .cart-item .ci-remove{font-size:12px;color:var(--red);font-weight:600;margin-left:auto;}
@@ -114,6 +131,8 @@
     </div>
   </header>
 
+  <div class="promo-bar hidden" id="promoBar"></div>
+
   <nav class="cat-nav">
     <div class="cat-nav-inner" id="catNav"></div>
   </nav>
@@ -146,34 +165,43 @@ function renderCardapio(){
   dot.style.background = STATE.config.isOpen ? "var(--teal)" : "var(--red)";
   txt.textContent = STATE.config.isOpen ? "Loja aberta agora" : "Loja fechada no momento";
 
-  const cats = ["Todos", ...STATE.config.categories];
+  renderPromotions();
+
+  const activeCombos = STATE.combos.filter(c=>c.active);
+  const cats = ["Todos", ...(activeCombos.length ? ["Combos"] : []), ...STATE.config.categories];
   const nav = document.getElementById("catNav");
   nav.innerHTML = cats.map(c=>`<button class="cat-chip ${c===activeCategory?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join("");
 
-  const active = STATE.products.filter(p=>p.active);
-  const grouped = {};
-  active.forEach(p=>{ (grouped[p.category] = grouped[p.category]||[]).push(p); });
-
-  const catsToShow = activeCategory==="Todos" ? STATE.config.categories.filter(c=>grouped[c]) : [activeCategory];
   const container = document.getElementById("menuSections");
+  const activeProds = STATE.products.filter(p=>p.active);
+  const grouped = {};
+  activeProds.forEach(p=>{ (grouped[p.category] = grouped[p.category]||[]).push(p); });
 
-  if(active.length===0){
-    container.innerHTML = `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum produto disponível no momento.</div></div>`;
+  let html = "";
+  if(activeCategory === "Combos"){
+    html = activeCombos.length ? comboSectionHtml(activeCombos) : emptyStateHtml("Nenhum combo disponível no momento.");
+  } else if(activeCategory === "Todos"){
+    let sections = "";
+    if(activeCombos.length) sections += comboSectionHtml(activeCombos);
+    sections += STATE.config.categories.filter(c=>grouped[c] && grouped[c].length).map(cat=>productSectionHtml(cat, grouped[cat])).join("");
+    html = sections || emptyStateHtml("Nenhum produto disponível no momento.");
   } else {
-    container.innerHTML = catsToShow.filter(c=>grouped[c] && grouped[c].length).map(cat=>`
-      <div class="menu-section">
-        <h2>${escapeHtml(cat)}</h2>
-        <span class="count">${grouped[cat].length} ${grouped[cat].length===1?'item':'itens'}</span>
-        <div class="product-grid">
-          ${grouped[cat].map(p=>productCardHtml(p)).join("")}
-        </div>
-      </div>
-    `).join("") || `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum item nesta categoria.</div></div>`;
+    const items = grouped[activeCategory] || [];
+    html = items.length ? productSectionHtml(activeCategory, items) : emptyStateHtml("Nenhum item nesta categoria.");
   }
+  container.innerHTML = html;
   renderCartWidgets();
 }
+function productSectionHtml(cat, items){
+  return `<div class="menu-section"><h2>${escapeHtml(cat)}</h2><span class="count">${items.length} ${items.length===1?'item':'itens'}</span><div class="product-grid">${items.map(productCardHtml).join("")}</div></div>`;
+}
+function comboSectionHtml(combos){
+  return `<div class="menu-section"><h2>Combos</h2><span class="count">${combos.length} ${combos.length===1?'combo':'combos'}</span><div class="product-grid">${combos.map(comboCardHtml).join("")}</div></div>`;
+}
+function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badge-diamond"></span><div>${escapeHtml(msg)}</div></div>`; }
+
 function productCardHtml(p){
-  return `<div class="product-card" onclick="openProductDetail('${p.id}')">
+  return `<div class="product-card" onclick="openItemDetail('${p.id}','product')">
     ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">🍽️</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(p.name)}</div>
@@ -185,38 +213,103 @@ function productCardHtml(p){
     </div>
   </div>`;
 }
+function comboCardHtml(c){
+  return `<div class="product-card" onclick="openItemDetail('${c.id}','combo')">
+    ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">🍔</div>`}
+    <div class="product-body">
+      <div class="product-name">${escapeHtml(c.name)}<span class="combo-tag">Combo</span></div>
+      <div class="product-desc">${escapeHtml(c.description||"")}</div>
+      <div class="product-foot">
+        <span class="product-price">${money(c.price)}</span>
+        <button class="add-btn" onclick="event.stopPropagation();quickAddCombo('${c.id}')">+</button>
+      </div>
+    </div>
+  </div>`;
+}
 function setCategory(c){ activeCategory = c; renderCardapio(); }
 function quickAdd(id){
   const p = STATE.products.find(x=>x.id===id);
   if(!p) return;
-  addToCart(p, 1);
+  addToCart(p, 1, "");
   showToast(`${p.name} adicionado à sacola`);
 }
+function quickAddCombo(id){
+  const c = STATE.combos.find(x=>x.id===id);
+  if(!c) return;
+  addToCart(Object.assign({}, c, {isCombo:true}), 1, "");
+  showToast(`${c.name} adicionado à sacola`);
+}
 
-/* ---------- product detail sheet ---------- */
+/* ---------- promoções ---------- */
+function renderPromotions(){
+  const promos = activePromotions();
+  const wrap = document.getElementById("promoBar");
+  if(!promos.length){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
+  const cards = promos.map(p=>{
+    const base = p.refType==="combo" ? STATE.combos.find(x=>x.id===p.refId) : STATE.products.find(x=>x.id===p.refId);
+    if(!base) return "";
+    const price = (p.price!==null && p.price!==undefined && p.price!=="") ? Number(p.price) : base.price;
+    const img = p.image || base.image;
+    return `<div class="promo-card" onclick="openPromotionDetail('${p.id}')">
+      ${img ? `<img src="${escapeAttr(img)}">` : `<div class="promo-img-placeholder">🔥</div>`}
+      <div class="promo-body">
+        <div class="promo-title">${escapeHtml(p.title || base.name)}</div>
+        <div class="promo-price">${price < base.price ? `<span class="strike">${money(base.price)}</span>` : ""}<span>${money(price)}</span></div>
+        ${p.endDate ? `<div class="promo-until">Até ${formatDateBR(p.endDate)}</div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+  if(!cards.trim()){ wrap.classList.add("hidden"); wrap.innerHTML=""; return; }
+  wrap.classList.remove("hidden");
+  wrap.innerHTML = `<div class="promo-bar-inner">${cards}</div>`;
+}
+function openPromotionDetail(promoId){
+  const promo = STATE.promotions.find(x=>x.id===promoId);
+  if(!promo || !isPromotionActive(promo)){ showToast("Esta promoção não está mais disponível."); return; }
+  const base = promo.refType==="combo" ? STATE.combos.find(x=>x.id===promo.refId) : STATE.products.find(x=>x.id===promo.refId);
+  if(!base){ showToast("Este item da promoção não está mais disponível."); return; }
+  const price = (promo.price!==null && promo.price!==undefined && promo.price!=="") ? Number(promo.price) : base.price;
+  const item = Object.assign({}, base, {
+    isCombo: promo.refType==="combo",
+    price,
+    originalPrice: base.price > price ? base.price : null,
+    image: promo.image || base.image
+  });
+  showDetailSheet(item);
+}
+
+/* ---------- ficha de produto / combo ---------- */
 let detailQty = 1, detailProduct = null;
-function openProductDetail(id){
-  detailProduct = STATE.products.find(x=>x.id===id);
-  if(!detailProduct) return;
+function openItemDetail(id, kind){
+  let item = kind==="combo" ? STATE.combos.find(x=>x.id===id) : STATE.products.find(x=>x.id===id);
+  if(!item) return;
+  item = Object.assign({}, item, {isCombo: kind==="combo"});
+  showDetailSheet(item);
+}
+function showDetailSheet(item){
+  detailProduct = item;
   detailQty = 1;
-  const html = `
+  const includedNames = item.isCombo ? (item.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean) : [];
+  openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
-      ${detailProduct.image ? `<img class="detail-img" src="${escapeAttr(detailProduct.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">🍽️</div>`}
+      ${item.image ? `<img class="detail-img" src="${escapeAttr(item.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">${item.isCombo?'🍔':'🍽️'}</div>`}
       <div class="detail-body">
-        <h3>${escapeHtml(detailProduct.name)}</h3>
-        <div class="desc">${escapeHtml(detailProduct.description||"")}</div>
+        <h3>${escapeHtml(item.name)}</h3>
+        ${item.originalPrice ? `<div class="promo-tag-line">🔥 Promoção — de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
+        <div class="desc">${escapeHtml(item.description||"")}</div>
+        ${includedNames.length ? `<div class="combo-includes">Inclui: <b>${includedNames.map(escapeHtml).join(", ")}</b></div>` : ""}
+        <div class="field"><label>Observações (opcional)</label><textarea id="detailNote" placeholder="Ex.: sem cebola, sem gelo, ponto da carne..."></textarea></div>
         <div class="qty-row">
           <div class="qty-control">
             <button onclick="changeDetailQty(-1)">−</button>
             <span id="detailQtyLabel">1</span>
             <button onclick="changeDetailQty(1)">+</button>
           </div>
-          <div class="detail-price" id="detailPriceLabel">${money(detailProduct.price)}</div>
+          <div class="detail-price" id="detailPriceLabel">${money(item.price)}</div>
         </div>
         <button class="btn btn-gold btn-block" onclick="confirmAddDetail()">Adicionar à sacola</button>
       </div>
-    </div>`;
-  openScrim(html);
+    </div>`);
 }
 function changeDetailQty(d){
   detailQty = Math.max(1, detailQty + d);
@@ -224,7 +317,9 @@ function changeDetailQty(d){
   document.getElementById("detailPriceLabel").textContent = money(detailProduct.price * detailQty);
 }
 function confirmAddDetail(){
-  addToCart(detailProduct, detailQty);
+  const noteEl = document.getElementById("detailNote");
+  const note = noteEl ? noteEl.value.trim() : "";
+  addToCart(detailProduct, detailQty, note);
   closeScrim();
   showToast(`${detailProduct.name} adicionado à sacola`);
 }
@@ -243,22 +338,31 @@ function closeScrim(){ const s = document.getElementById("activeScrim"); if(s) s
 /* =====================================================================
    CARRINHO
 ===================================================================== */
-function addToCart(product, qty){
-  const existing = cart.find(c=>c.productId===product.id);
-  if(existing) existing.qty += qty;
-  else cart.push({productId:product.id, name:product.name, price:product.price, image:product.image, qty});
+function addToCart(item, qty, note){
+  note = (note||"").trim();
+  const isCombo = !!item.isCombo;
+  const existing = (!isCombo && !note) ? cart.find(c=>c.productId===item.id && !c.note && !c.isCombo) : null;
+  if(existing){
+    existing.qty += qty;
+  } else {
+    let comboItems;
+    if(isCombo){
+      comboItems = (item.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean);
+    }
+    cart.push({ lineId: uid(), productId:item.id, name:item.name, price:item.price, image:item.image, qty, note, isCombo, comboItems });
+  }
   renderCartWidgets();
 }
-function changeCartQty(productId, d){
-  const item = cart.find(c=>c.productId===productId);
+function changeCartQty(lineId, d){
+  const item = cart.find(c=>c.lineId===lineId);
   if(!item) return;
   item.qty += d;
-  if(item.qty<=0) cart = cart.filter(c=>c.productId!==productId);
+  if(item.qty<=0) cart = cart.filter(c=>c.lineId!==lineId);
   renderCartWidgets();
   if(document.getElementById("activeScrim")) renderCartSheetContent();
 }
-function removeFromCart(productId){
-  cart = cart.filter(c=>c.productId!==productId);
+function removeFromCart(lineId){
+  cart = cart.filter(c=>c.lineId!==lineId);
   renderCartWidgets();
   if(document.getElementById("activeScrim")) renderCartSheetContent();
 }
@@ -291,15 +395,16 @@ function renderCartSheetContent(){
     <div class="cart-items">
       ${cart.map(c=>`
         <div class="cart-item">
-          ${c.image?`<img src="${escapeAttr(c.image)}">`:`<div style="width:56px;height:56px;border-radius:9px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;flex-shrink:0">🍽️</div>`}
+          ${c.image?`<img src="${escapeAttr(c.image)}">`:`<div style="width:56px;height:56px;border-radius:9px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;flex-shrink:0">${c.isCombo?'🍔':'🍽️'}</div>`}
           <div class="ci-info">
-            <div class="ci-name">${escapeHtml(c.name)}</div>
+            <div class="ci-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
             <div class="ci-price">${money(c.price)} un.</div>
+            ${c.note ? `<div class="ci-note">Obs: ${escapeHtml(c.note)}</div>` : ""}
             <div class="ci-qty">
-              <button onclick="changeCartQty('${c.productId}',-1)">−</button>
+              <button onclick="changeCartQty('${c.lineId}',-1)">−</button>
               <span style="font-family:var(--font-mono);font-weight:700">${c.qty}</span>
-              <button onclick="changeCartQty('${c.productId}',1)">+</button>
-              <button class="ci-remove" onclick="removeFromCart('${c.productId}')">Remover</button>
+              <button onclick="changeCartQty('${c.lineId}',1)">+</button>
+              <button class="ci-remove" onclick="removeFromCart('${c.lineId}')">Remover</button>
             </div>
           </div>
         </div>`).join("")}
@@ -352,20 +457,22 @@ function submitOrder(){
     code,
     customerName: name,
     phone, address,
-    items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price})),
+    items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
     subtotal: sub, deliveryFee: fee, total: sub+fee,
     payment: selectedPayment,
-    status: "recebido",
+    status: STATE.config.autoAcceptOrders ? "recebido" : "pendente",
     createdAt: Date.now(),
     dateStr: todayStr()
   };
+  const waUrl = buildWhatsAppUrl(order);
+  if(waUrl) window.open(waUrl, "_blank");
   createOrderData(order).then(()=>{
     cart = [];
     renderCartWidgets();
-    showOrderConfirmation(order);
+    showOrderConfirmation(order, waUrl);
   });
 }
-function showOrderConfirmation(order){
+function showOrderConfirmation(order, waUrl){
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="confirm-body">
@@ -373,6 +480,7 @@ function showOrderConfirmation(order){
         <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
         <div class="order-code">${order.code}</div>
         <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
+        ${waUrl ? `<a class="btn btn-gold btn-block" style="margin-top:16px" href="${waUrl}" target="_blank">Enviar pelo WhatsApp</a><div style="font-size:11.5px;color:var(--gray-300);margin-top:6px">Se não abriu sozinho, toque no botão acima para confirmar por lá.</div>` : ""}
         <div class="order-track">
           ${STATUS_FLOW.map(s=>`<div class="track-step done"><span class="dot"></span>${STATUS_LABEL[s]}</div>`).join("")}
         </div>
