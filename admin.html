@@ -92,6 +92,18 @@
 .cat-manage-item{display:flex;align-items:center;gap:8px;background:var(--gray-100);padding:7px 8px 7px 14px;border-radius:999px;font-size:13px;font-weight:600;}
 .cat-manage-item button{color:var(--red);font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--white);}
 
+/* ajuda */
+.help-intro{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:22px;max-width:620px;}
+.help-steps{display:flex;flex-direction:column;gap:0;}
+.help-step{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--gray-100);}
+.help-step:last-child{border-bottom:none;}
+.help-step .hs-num{width:34px;height:34px;border-radius:10px;background:var(--purple-700);color:var(--white);font-family:var(--font-mono);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.help-step .hs-body h4{font-size:14.5px;margin-bottom:5px;}
+.help-step .hs-body p{font-size:13.5px;color:var(--ink-soft);line-height:1.55;}
+.help-step .hs-body code{background:var(--gray-100);padding:2px 7px;border-radius:6px;font-family:var(--font-mono);font-size:12.5px;color:var(--purple-700);}
+.help-step .hs-body a{color:var(--purple-700);font-weight:600;text-decoration:underline;}
+.help-note{background:var(--amber-100);color:#9A6A0E;padding:14px 16px;border-radius:12px;font-size:13px;line-height:1.55;margin-top:18px;}
+
 .mobile-topbar{display:none;background:var(--purple-900);color:var(--white);padding:14px 18px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;}
 @media(max-width:840px){
   .admin-shell{flex-direction:column;}
@@ -133,6 +145,7 @@ canvas{max-width:100%;}
       <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos</button>
       <button class="nav-item" data-tab="menu" onclick="setAdminTab('menu')"><span class="badge-diamond"></span>Cardápio</button>
       <button class="nav-item" data-tab="settings" onclick="setAdminTab('settings')"><span class="badge-diamond"></span>Configurações</button>
+      <button class="nav-item" data-tab="ajuda" onclick="setAdminTab('ajuda')"><span class="badge-diamond"></span>Ajuda</button>
       <div class="sidebar-foot">
         <a href="index.html" target="_blank">↗ Ver cardápio público</a>
         <button onclick="adminLogout()">⏻ Sair</button>
@@ -224,6 +237,51 @@ canvas{max-width:100%;}
           </div>
         </div>
       </section>
+
+      <section id="tab-ajuda" class="hidden">
+        <div class="admin-topbar"><h1>Como colocar foto nos produtos</h1></div>
+        <div class="card panel">
+          <p class="help-intro">O cardápio mostra a foto que estiver salva no campo "URL da imagem" de cada produto. Como este site é hospedado de forma simples (sem servidor próprio de arquivos), a foto precisa estar hospedada em algum lugar da internet antes — e você só cola o link dela aqui no painel. Veja o passo a passo:</p>
+          <div class="help-steps">
+            <div class="help-step">
+              <div class="hs-num">1</div>
+              <div class="hs-body">
+                <h4>Separe a foto do produto</h4>
+                <p>Tire a foto ou escolha a imagem já pronta no celular/computador. Prefira fotos na horizontal, bem iluminadas, com o prato ou item centralizado — ficam melhores no cardápio.</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="hs-num">2</div>
+              <div class="hs-body">
+                <h4>Suba a foto para um site de hospedagem de imagem</h4>
+                <p>Acesse <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a> (gratuito, não precisa criar conta). Clique em <code>Start uploading</code>, escolha o arquivo da foto e aguarde o upload terminar.</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="hs-num">3</div>
+              <div class="hs-body">
+                <h4>Copie o link direto da imagem</h4>
+                <p>Depois do upload, o ImgBB mostra vários links. Procure o campo <code>Direct link</code> (ou "Link direto") e copie o endereço — ele termina com <code>.jpg</code>, <code>.png</code> ou parecido. Não use o link da página, e sim esse link direto da imagem.</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="hs-num">4</div>
+              <div class="hs-body">
+                <h4>Volte para a aba Cardápio deste painel</h4>
+                <p>Clique em <code>Cardápio</code> no menu lateral. Para um produto novo, clique em <code>+ Novo produto</code>. Para um produto que já existe, clique no ícone de lápis (✎) na linha dele.</p>
+              </div>
+            </div>
+            <div class="help-step">
+              <div class="hs-num">5</div>
+              <div class="hs-body">
+                <h4>Cole o link no campo "URL da imagem"</h4>
+                <p>Cole o link copiado do ImgBB nesse campo e clique em <code>Salvar alterações</code> (ou <code>Adicionar produto</code>). A foto já aparece no cardápio público na hora.</p>
+              </div>
+            </div>
+          </div>
+          <div class="help-note">Em breve o painel vai ganhar um botão de envio direto de foto (sem precisar passar por outro site) — assim que estiver pronto, essa página é atualizada.</div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -272,7 +330,7 @@ function setSyncStatus(on){
 
 function setAdminTab(tab){
   adminTab = tab;
-  ["overview","orders","menu","settings"].forEach(t=>{
+  ["overview","orders","menu","settings","ajuda"].forEach(t=>{
     document.getElementById("tab-"+t).classList.toggle("hidden", t!==tab);
   });
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.tab===tab));
