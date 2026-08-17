@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Sabor Direto — Cardápio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ---------- estilos exclusivos do cardápio ---------- */
+#view-cardapio{min-height:100vh;padding-bottom:90px;}
+.menu-header{padding:22px 0 34px;}
+.menu-header .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand .mark{width:38px;height:38px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
+.brand .mark::after{content:"";position:absolute;inset:8px;background:var(--purple-900);border-radius:2px;}
+.brand-name{color:var(--white);font-size:19px;font-weight:700;line-height:1.1;}
+.brand-tag{color:var(--gold-300);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+.cart-btn{position:relative;background:rgba(255,255,255,.12);color:var(--white);width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;}
+.cart-count{position:absolute;top:-6px;right:-6px;background:var(--orange);color:var(--white);font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+.menu-header h1{color:var(--white);font-size:28px;max-width:420px;line-height:1.2;margin-bottom:8px;}
+.menu-header p{color:var(--gray-200);font-size:14.5px;max-width:440px;}
+.store-status{margin-top:16px;}
+.store-status .pill{background:rgba(255,255,255,.14);color:var(--white);}
+.store-status .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;}
+
+.cat-nav{position:sticky;top:0;z-index:30;background:var(--gray-50);border-bottom:1px solid var(--gray-200);padding:12px 0;}
+.cat-nav-inner{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:0 20px;}
+.cat-nav-inner::-webkit-scrollbar{display:none;}
+.cat-chip{flex-shrink:0;padding:9px 18px;border-radius:999px;font-size:13.5px;font-weight:600;background:var(--white);color:var(--ink-soft);border:1.5px solid var(--gray-200);white-space:nowrap;}
+.cat-chip.active{background:var(--purple-700);color:var(--white);border-color:var(--purple-700);}
+
+.menu-section{padding:28px 0 8px;}
+.menu-section h2{font-size:18px;margin-bottom:4px;}
+.menu-section .count{font-size:13px;color:var(--ink-soft);margin-bottom:16px;display:block;}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+.product-card{background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:box-shadow .18s, transform .18s;display:flex;flex-direction:column;}
+.product-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+.product-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--gray-100);}
+.product-img.placeholder{display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:34px;}
+.product-body{padding:14px 15px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
+.product-name{font-size:15.5px;font-weight:700;font-family:var(--font-display);}
+.product-desc{font-size:13px;color:var(--ink-soft);line-height:1.4;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.product-foot{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+.product-price{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--purple-700);}
+.add-btn{width:34px;height:34px;border-radius:9px;background:var(--gold-500);color:var(--purple-900);font-size:19px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.add-btn:hover{background:var(--gold-300);}
+
+.detail-img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--gray-100);}
+.detail-body h3{font-size:20px;margin-bottom:8px;}
+.detail-body .desc{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin-bottom:18px;}
+.qty-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.qty-control{display:flex;align-items:center;gap:14px;background:var(--gray-100);border-radius:12px;padding:6px 8px;}
+.qty-control button{width:32px;height:32px;border-radius:8px;background:var(--white);font-size:18px;font-weight:700;color:var(--purple-700);box-shadow:var(--shadow-sm);}
+.qty-control span{font-family:var(--font-mono);font-weight:700;min-width:22px;text-align:center;}
+.detail-price{font-family:var(--font-mono);font-weight:700;font-size:22px;color:var(--purple-700);}
+
+.cart-sheet{width:100%;max-width:440px;}
+.cart-items{padding:12px 22px;max-height:38vh;overflow-y:auto;}
+.cart-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray-100);}
+.cart-item img{width:56px;height:56px;border-radius:9px;object-fit:cover;background:var(--gray-100);flex-shrink:0;}
+.cart-item .ci-info{flex:1;min-width:0;}
+.cart-item .ci-name{font-size:14px;font-weight:600;}
+.cart-item .ci-price{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+.cart-item .ci-qty{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.cart-item .ci-qty button{width:24px;height:24px;border-radius:6px;background:var(--gray-100);font-weight:700;}
+.cart-item .ci-remove{font-size:12px;color:var(--red);font-weight:600;margin-left:auto;}
+.cart-summary{padding:16px 22px 22px;border-top:1px solid var(--gray-100);}
+
+.checkout-body{padding:22px;}
+.pay-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;}
+.pay-opt{padding:12px 8px;border:1.5px solid var(--gray-200);border-radius:10px;text-align:center;font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.pay-opt.active{border-color:var(--purple-700);color:var(--purple-700);background:var(--gray-100);}
+
+.confirm-body{padding:32px 26px;text-align:center;}
+.confirm-check{width:64px;height:64px;border-radius:50%;background:var(--teal-100);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px;}
+.order-code{font-family:var(--font-mono);font-size:32px;font-weight:700;color:var(--purple-700);letter-spacing:.03em;margin:10px 0 4px;}
+.order-track{margin-top:22px;text-align:left;background:var(--gray-50);border-radius:14px;padding:16px 18px;}
+.track-step{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:13.5px;color:var(--gray-300);}
+.track-step .dot{width:9px;height:9px;border-radius:50%;background:var(--gray-200);flex-shrink:0;}
+.track-step.done{color:var(--ink);font-weight:600;}
+.track-step.done .dot{background:var(--teal);}
+
+.floating-cart{position:fixed;left:16px;right:16px;bottom:16px;max-width:420px;margin:0 auto;background:var(--purple-700);color:var(--white);border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-lg);z-index:20;}
+.floating-cart .fc-info{font-size:13px;color:var(--gold-300);font-weight:600;}
+.floating-cart .fc-total{font-family:var(--font-mono);font-weight:700;font-size:17px;}
+.menu-footer{text-align:center;padding:36px 20px 20px;}
+</style>
+</head>
+<body>
+
+<div id="view-cardapio">
+  <header class="menu-header diamond-field">
+    <div class="container">
+      <div class="top">
+        <div class="brand">
+          <span class="mark"></span>
+          <div>
+            <div class="brand-name" id="storeNameLabel">Sabor Direto</div>
+            <div class="brand-tag">Peça online</div>
+          </div>
+        </div>
+        <button class="cart-btn" onclick="openCart()">🛒<span class="cart-count hidden" id="cartCount">0</span></button>
+      </div>
+      <h1>O cardápio inteiro, do jeito que você gosta de ver.</h1>
+      <p>Escolha os itens, monte seu pedido e acompanhe tudo até chegar na sua porta.</p>
+      <div class="store-status">
+        <span class="pill"><span class="dot" id="storeStatusDot"></span><span id="storeStatusText">Loja aberta agora</span></span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="cat-nav">
+    <div class="cat-nav-inner" id="catNav"></div>
+  </nav>
+
+  <main class="container" id="menuSections"></main>
+
+  <footer class="menu-footer"></footer>
+
+  <div class="floating-cart hidden" id="floatingCart" onclick="openCart()">
+    <div><div class="fc-info" id="fcCount">0 itens</div><div style="font-size:13px">Ver sacola</div></div>
+    <div class="fc-total" id="fcTotal">R$ 0,00</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+let cart = [];
+let activeCategory = "Todos";
+let orderCounter = 0;
+
+/* =====================================================================
+   CARDÁPIO — render
+===================================================================== */
+function renderCardapio(){
+  document.getElementById("storeNameLabel").textContent = STATE.config.storeName;
+  const dot = document.getElementById("storeStatusDot");
+  const txt = document.getElementById("storeStatusText");
+  dot.style.background = STATE.config.isOpen ? "var(--teal)" : "var(--red)";
+  txt.textContent = STATE.config.isOpen ? "Loja aberta agora" : "Loja fechada no momento";
+
+  const cats = ["Todos", ...STATE.config.categories];
+  const nav = document.getElementById("catNav");
+  nav.innerHTML = cats.map(c=>`<button class="cat-chip ${c===activeCategory?'active':''}" onclick="setCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join("");
+
+  const active = STATE.products.filter(p=>p.active);
+  const grouped = {};
+  active.forEach(p=>{ (grouped[p.category] = grouped[p.category]||[]).push(p); });
+
+  const catsToShow = activeCategory==="Todos" ? STATE.config.categories.filter(c=>grouped[c]) : [activeCategory];
+  const container = document.getElementById("menuSections");
+
+  if(active.length===0){
+    container.innerHTML = `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum produto disponível no momento.</div></div>`;
+  } else {
+    container.innerHTML = catsToShow.filter(c=>grouped[c] && grouped[c].length).map(cat=>`
+      <div class="menu-section">
+        <h2>${escapeHtml(cat)}</h2>
+        <span class="count">${grouped[cat].length} ${grouped[cat].length===1?'item':'itens'}</span>
+        <div class="product-grid">
+          ${grouped[cat].map(p=>productCardHtml(p)).join("")}
+        </div>
+      </div>
+    `).join("") || `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum item nesta categoria.</div></div>`;
+  }
+  renderCartWidgets();
+}
+function productCardHtml(p){
+  return `<div class="product-card" onclick="openProductDetail('${p.id}')">
+    ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">🍽️</div>`}
+    <div class="product-body">
+      <div class="product-name">${escapeHtml(p.name)}</div>
+      <div class="product-desc">${escapeHtml(p.description||"")}</div>
+      <div class="product-foot">
+        <span class="product-price">${money(p.price)}</span>
+        <button class="add-btn" onclick="event.stopPropagation();quickAdd('${p.id}')">+</button>
+      </div>
+    </div>
+  </div>`;
+}
+function setCategory(c){ activeCategory = c; renderCardapio(); }
+function quickAdd(id){
+  const p = STATE.products.find(x=>x.id===id);
+  if(!p) return;
+  addToCart(p, 1);
+  showToast(`${p.name} adicionado à sacola`);
+}
+
+/* ---------- product detail sheet ---------- */
+let detailQty = 1, detailProduct = null;
+function openProductDetail(id){
+  detailProduct = STATE.products.find(x=>x.id===id);
+  if(!detailProduct) return;
+  detailQty = 1;
+  const html = `
+    <div class="sheet" onclick="event.stopPropagation()">
+      ${detailProduct.image ? `<img class="detail-img" src="${escapeAttr(detailProduct.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">🍽️</div>`}
+      <div class="detail-body">
+        <h3>${escapeHtml(detailProduct.name)}</h3>
+        <div class="desc">${escapeHtml(detailProduct.description||"")}</div>
+        <div class="qty-row">
+          <div class="qty-control">
+            <button onclick="changeDetailQty(-1)">−</button>
+            <span id="detailQtyLabel">1</span>
+            <button onclick="changeDetailQty(1)">+</button>
+          </div>
+          <div class="detail-price" id="detailPriceLabel">${money(detailProduct.price)}</div>
+        </div>
+        <button class="btn btn-gold btn-block" onclick="confirmAddDetail()">Adicionar à sacola</button>
+      </div>
+    </div>`;
+  openScrim(html);
+}
+function changeDetailQty(d){
+  detailQty = Math.max(1, detailQty + d);
+  document.getElementById("detailQtyLabel").textContent = detailQty;
+  document.getElementById("detailPriceLabel").textContent = money(detailProduct.price * detailQty);
+}
+function confirmAddDetail(){
+  addToCart(detailProduct, detailQty);
+  closeScrim();
+  showToast(`${detailProduct.name} adicionado à sacola`);
+}
+
+/* ---------- scrim helper ---------- */
+function openScrim(innerHtml){
+  closeScrim();
+  const div = document.createElement("div");
+  div.className = "scrim"; div.id = "activeScrim";
+  div.onclick = closeScrim;
+  div.innerHTML = innerHtml;
+  document.body.appendChild(div);
+}
+function closeScrim(){ const s = document.getElementById("activeScrim"); if(s) s.remove(); }
+
+/* =====================================================================
+   CARRINHO
+===================================================================== */
+function addToCart(product, qty){
+  const existing = cart.find(c=>c.productId===product.id);
+  if(existing) existing.qty += qty;
+  else cart.push({productId:product.id, name:product.name, price:product.price, image:product.image, qty});
+  renderCartWidgets();
+}
+function changeCartQty(productId, d){
+  const item = cart.find(c=>c.productId===productId);
+  if(!item) return;
+  item.qty += d;
+  if(item.qty<=0) cart = cart.filter(c=>c.productId!==productId);
+  renderCartWidgets();
+  if(document.getElementById("activeScrim")) renderCartSheetContent();
+}
+function removeFromCart(productId){
+  cart = cart.filter(c=>c.productId!==productId);
+  renderCartWidgets();
+  if(document.getElementById("activeScrim")) renderCartSheetContent();
+}
+function cartSubtotal(){ return cart.reduce((s,c)=>s+c.price*c.qty,0); }
+function cartCount(){ return cart.reduce((s,c)=>s+c.qty,0); }
+
+function renderCartWidgets(){
+  const count = cartCount();
+  const cc = document.getElementById("cartCount");
+  cc.textContent = count; cc.classList.toggle("hidden", count===0);
+  const fc = document.getElementById("floatingCart");
+  fc.classList.toggle("hidden", count===0);
+  if(count>0){
+    document.getElementById("fcCount").textContent = count+(count===1?" item":" itens");
+    document.getElementById("fcTotal").textContent = money(cartSubtotal()+ (STATE.config.deliveryFee||0));
+  }
+}
+function openCart(){
+  if(cart.length===0){ showToast("Sua sacola está vazia."); return; }
+  openScrim(`<div class="sheet cart-sheet" onclick="event.stopPropagation()" id="cartSheetInner"></div>`);
+  renderCartSheetContent();
+}
+function renderCartSheetContent(){
+  const wrap = document.getElementById("cartSheetInner");
+  if(!wrap) return;
+  const sub = cartSubtotal();
+  const fee = STATE.config.deliveryFee || 0;
+  wrap.innerHTML = `
+    <div class="cart-head"><h3>Sua sacola</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+    <div class="cart-items">
+      ${cart.map(c=>`
+        <div class="cart-item">
+          ${c.image?`<img src="${escapeAttr(c.image)}">`:`<div style="width:56px;height:56px;border-radius:9px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;flex-shrink:0">🍽️</div>`}
+          <div class="ci-info">
+            <div class="ci-name">${escapeHtml(c.name)}</div>
+            <div class="ci-price">${money(c.price)} un.</div>
+            <div class="ci-qty">
+              <button onclick="changeCartQty('${c.productId}',-1)">−</button>
+              <span style="font-family:var(--font-mono);font-weight:700">${c.qty}</span>
+              <button onclick="changeCartQty('${c.productId}',1)">+</button>
+              <button class="ci-remove" onclick="removeFromCart('${c.productId}')">Remover</button>
+            </div>
+          </div>
+        </div>`).join("")}
+    </div>
+    <div class="cart-summary">
+      <div class="sum-row"><span>Subtotal</span><span>${money(sub)}</span></div>
+      <div class="sum-row"><span>Taxa de entrega</span><span>${money(fee)}</span></div>
+      <div class="sum-row total"><span>Total</span><span>${money(sub+fee)}</span></div>
+      <button class="btn btn-primary btn-block" style="margin-top:14px" onclick="openCheckout()">Finalizar pedido</button>
+    </div>`;
+}
+
+/* ---------- checkout ---------- */
+let selectedPayment = "pix";
+function openCheckout(){
+  selectedPayment = "pix";
+  const sub = cartSubtotal(); const fee = STATE.config.deliveryFee||0;
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>Finalizar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="checkout-body">
+        <div class="field"><label>Seu nome</label><input id="chkName" placeholder="Como podemos te chamar?"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" placeholder="Rua, número, bairro, complemento"></textarea></div>
+        <div class="field">
+          <label>Forma de pagamento</label>
+          <div class="pay-options">
+            <div class="pay-opt active" id="pay-pix" onclick="selectPayment('pix')">Pix</div>
+            <div class="pay-opt" id="pay-cartao" onclick="selectPayment('cartao')">Cartão</div>
+            <div class="pay-opt" id="pay-dinheiro" onclick="selectPayment('dinheiro')">Dinheiro</div>
+          </div>
+        </div>
+        <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span>${money(sub+fee)}</span></div>
+        <button class="btn btn-gold btn-block" onclick="submitOrder()">Confirmar e pagar</button>
+      </div>
+    </div>`);
+}
+function selectPayment(p){
+  selectedPayment = p;
+  ["pix","cartao","dinheiro"].forEach(k=>document.getElementById("pay-"+k).classList.toggle("active", k===p));
+}
+function submitOrder(){
+  const name = document.getElementById("chkName").value.trim();
+  const phone = document.getElementById("chkPhone").value.trim();
+  const address = document.getElementById("chkAddress").value.trim();
+  if(!name || !phone || !address){ showToast("Preencha nome, telefone e endereço."); return; }
+  const sub = cartSubtotal(); const fee = STATE.config.deliveryFee||0;
+  const code = "#" + String(++orderCounter).padStart(4,"0");
+  const order = {
+    code,
+    customerName: name,
+    phone, address,
+    items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price})),
+    subtotal: sub, deliveryFee: fee, total: sub+fee,
+    payment: selectedPayment,
+    status: "recebido",
+    createdAt: Date.now(),
+    dateStr: todayStr()
+  };
+  createOrderData(order).then(()=>{
+    cart = [];
+    renderCartWidgets();
+    showOrderConfirmation(order);
+  });
+}
+function showOrderConfirmation(order){
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="confirm-body">
+        <div class="confirm-check">✓</div>
+        <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
+        <div class="order-code">${order.code}</div>
+        <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
+        <div class="order-track">
+          ${STATUS_FLOW.map(s=>`<div class="track-step done"><span class="dot"></span>${STATUS_LABEL[s]}</div>`).join("")}
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:20px" onclick="closeScrim()">Fechar</button>
+      </div>
+    </div>`);
+}
+
+initData(renderCardapio);
+renderCardapio();
+</script>
+</body>
+</html>

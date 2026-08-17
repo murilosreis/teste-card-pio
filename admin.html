@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel administrativo — Sabor Direto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ---------- estilos exclusivos do painel ---------- */
+#view-admin{min-height:100vh;background:var(--gray-50);}
+.admin-login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.admin-login .login-card{max-width:380px;width:100%;padding:36px 30px;text-align:center;}
+.admin-login .mark-big{width:56px;height:56px;background:var(--gold-500);transform:rotate(45deg);border-radius:8px;margin:0 auto 22px;position:relative;}
+.admin-login .mark-big::after{content:"";position:absolute;inset:11px;background:var(--purple-900);border-radius:3px;}
+.admin-login h2{font-size:20px;margin-bottom:6px;}
+.admin-login p{font-size:13.5px;color:var(--ink-soft);margin-bottom:22px;}
+
+.admin-shell{display:flex;min-height:100vh;}
+.admin-sidebar{width:230px;flex-shrink:0;background:var(--purple-900);color:var(--white);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;}
+.admin-sidebar .brand{padding:6px 8px 22px;display:flex;align-items:center;}
+.admin-sidebar .mark{width:30px;height:30px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
+.admin-sidebar .mark::after{content:"";position:absolute;inset:6px;background:var(--purple-900);border-radius:2px;}
+.admin-sidebar .brand-name{font-size:16px;color:var(--white);font-weight:700;margin-left:10px;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--gray-300);font-size:14px;font-weight:600;margin-bottom:2px;width:100%;text-align:left;}
+.nav-item .badge-diamond{background:var(--gray-300);}
+.nav-item.active{background:rgba(255,255,255,.1);color:var(--white);}
+.nav-item.active .badge-diamond{background:var(--gold-500);}
+.nav-item:hover{color:var(--white);}
+.sidebar-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);}
+.sidebar-foot a,.sidebar-foot button{font-size:13px;color:var(--gray-300);padding:9px 12px;display:flex;align-items:center;gap:9px;width:100%;text-align:left;border-radius:9px;}
+.sidebar-foot a:hover,.sidebar-foot button:hover{color:var(--white);background:rgba(255,255,255,.06);}
+
+.admin-main{flex:1;min-width:0;padding:26px 30px 60px;}
+.admin-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.admin-topbar h1{font-size:22px;}
+.sync-pill{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;}
+.sync-pill.on{background:var(--teal-100);color:var(--teal);}
+.sync-pill.off{background:var(--amber-100);color:#9A6A0E;}
+.sync-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
+.kpi-card{padding:18px 20px;}
+.kpi-label{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:8px;}
+.kpi-value{font-family:var(--font-display);font-size:25px;font-weight:700;}
+.kpi-value.mono{font-family:var(--font-mono);}
+.kpi-sub{font-size:11.5px;color:var(--gray-300);margin-top:4px;font-weight:600;}
+.kpi-sub.up{color:var(--teal);}
+
+.dash-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:22px;}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
+.panel{padding:20px 22px;}
+.panel h3{font-size:15.5px;margin-bottom:16px;}
+.top-product-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--gray-100);font-size:13.5px;}
+.top-product-row:last-child{border:none;}
+.top-product-row .tp-name{font-weight:600;}
+.top-product-row .tp-count{color:var(--ink-soft);font-family:var(--font-mono);font-size:12.5px;}
+
+.status-tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+.status-tab{padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;background:var(--white);border:1.5px solid var(--gray-200);color:var(--ink-soft);}
+.status-tab.active{background:var(--purple-700);border-color:var(--purple-700);color:var(--white);}
+.status-tab .n{font-family:var(--font-mono);opacity:.75;margin-left:4px;}
+.order-list{display:grid;gap:12px;}
+.order-card{padding:16px 18px;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+.order-card .oc-code{font-family:var(--font-mono);font-weight:700;font-size:15px;color:var(--purple-700);background:var(--gray-100);padding:5px 10px;border-radius:8px;flex-shrink:0;}
+.order-card .oc-main{flex:1;min-width:180px;}
+.order-card .oc-name{font-weight:700;font-size:14.5px;}
+.order-card .oc-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
+.order-card .oc-items{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+.order-card .oc-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.order-card .oc-total{font-family:var(--font-mono);font-weight:700;}
+
+.admin-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
+.prod-table{width:100%;border-collapse:collapse;}
+.prod-table th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);padding:10px 14px;border-bottom:1.5px solid var(--gray-100);}
+.prod-table td{padding:12px 14px;border-bottom:1px solid var(--gray-100);font-size:13.5px;vertical-align:middle;}
+.prod-table tr:last-child td{border-bottom:none;}
+.prod-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--gray-100);}
+.toggle{width:38px;height:22px;border-radius:999px;background:var(--gray-200);position:relative;flex-shrink:0;}
+.toggle.on{background:var(--teal);}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:var(--white);border-radius:50%;transition:transform .15s;}
+.toggle.on::after{transform:translateX(16px);}
+.icon-btn{width:32px;height:32px;border-radius:8px;background:var(--gray-100);color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;font-size:14px;}
+.icon-btn:hover{background:var(--gray-200);color:var(--ink);}
+.icon-btn.danger:hover{background:var(--red-100);color:var(--red);}
+.cat-manage-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.cat-manage-item{display:flex;align-items:center;gap:8px;background:var(--gray-100);padding:7px 8px 7px 14px;border-radius:999px;font-size:13px;font-weight:600;}
+.cat-manage-item button{color:var(--red);font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--white);}
+
+.mobile-topbar{display:none;background:var(--purple-900);color:var(--white);padding:14px 18px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;}
+@media(max-width:840px){
+  .admin-shell{flex-direction:column;}
+  .admin-sidebar{position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%);transition:transform .2s;z-index:60;}
+  .admin-sidebar.open{transform:translateX(0);}
+  .mobile-topbar{display:flex;}
+  .admin-main{padding:20px 16px 60px;}
+}
+canvas{max-width:100%;}
+</style>
+</head>
+<body>
+
+<div id="view-admin">
+
+  <div class="admin-login" id="adminLoginScreen">
+    <div class="card login-card">
+      <div class="mark-big"></div>
+      <h2>Painel administrativo</h2>
+      <p>Entre com a senha para acessar pedidos, cardápio e vendas.</p>
+      <div class="field" style="text-align:left">
+        <label>Senha</label>
+        <input type="password" id="adminPassInput" placeholder="••••••" onkeydown="if(event.key==='Enter')tryAdminLogin()">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="tryAdminLogin()">Entrar</button>
+      <p style="font-size:11.5px;color:var(--gray-300);margin-top:18px">Senha padrão inicial: <b>admin123</b> — altere em Configurações.</p>
+    </div>
+  </div>
+
+  <div class="admin-shell hidden" id="adminShell">
+    <div class="mobile-topbar">
+      <button onclick="toggleSidebar()" style="color:#fff;font-size:20px">☰</button>
+      <span style="font-weight:700">Painel</span>
+      <span></span>
+    </div>
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="brand"><span class="mark"></span><span class="brand-name" id="storeNameLabelAdmin">Sabor Direto</span></div>
+      <button class="nav-item" data-tab="overview" onclick="setAdminTab('overview')"><span class="badge-diamond"></span>Visão geral</button>
+      <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos</button>
+      <button class="nav-item" data-tab="menu" onclick="setAdminTab('menu')"><span class="badge-diamond"></span>Cardápio</button>
+      <button class="nav-item" data-tab="settings" onclick="setAdminTab('settings')"><span class="badge-diamond"></span>Configurações</button>
+      <div class="sidebar-foot">
+        <a href="index.html" target="_blank">↗ Ver cardápio público</a>
+        <button onclick="adminLogout()">⏻ Sair</button>
+      </div>
+    </aside>
+
+    <div class="admin-main">
+      <section id="tab-overview">
+        <div class="admin-topbar">
+          <h1>Visão geral</h1>
+          <span class="sync-pill" id="syncPill"><span class="dot"></span><span id="syncPillText">Verificando conexão…</span></span>
+        </div>
+        <div class="kpi-grid">
+          <div class="card kpi-card"><div class="kpi-label">Pedidos hoje</div><div class="kpi-value" id="kpiOrdersToday">0</div><div class="kpi-sub" id="kpiOrdersOpen">0 em aberto</div></div>
+          <div class="card kpi-card"><div class="kpi-label">Faturamento hoje</div><div class="kpi-value mono" id="kpiRevenueToday">R$ 0,00</div><div class="kpi-sub up" id="kpiRevenueVsYesterday">—</div></div>
+          <div class="card kpi-card"><div class="kpi-label">Ticket médio</div><div class="kpi-value mono" id="kpiAvgTicket">R$ 0,00</div><div class="kpi-sub">hoje</div></div>
+          <div class="card kpi-card"><div class="kpi-label">Faturamento (7 dias)</div><div class="kpi-value mono" id="kpiRevenue7d">R$ 0,00</div><div class="kpi-sub" id="kpiOrders7d">0 pedidos</div></div>
+        </div>
+        <div class="dash-grid">
+          <div class="card panel">
+            <h3>Vendas — últimos 7 dias</h3>
+            <canvas id="salesChart" height="180"></canvas>
+          </div>
+          <div class="card panel">
+            <h3>Mais vendidos (7 dias)</h3>
+            <div id="topProductsList"></div>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="card panel">
+            <h3>Pedidos por status</h3>
+            <div id="statusBreakdown"></div>
+          </div>
+          <div class="card panel">
+            <h3>Formas de pagamento (7 dias)</h3>
+            <div id="paymentBreakdown"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-orders" class="hidden">
+        <div class="admin-topbar"><h1>Fila de pedidos</h1></div>
+        <div class="status-tabs" id="orderStatusTabs"></div>
+        <div class="order-list" id="orderList"></div>
+      </section>
+
+      <section id="tab-menu" class="hidden">
+        <div class="admin-topbar"><h1>Cardápio</h1></div>
+        <div class="card panel" style="margin-bottom:18px">
+          <h3>Categorias</h3>
+          <div class="cat-manage-list" id="catManageList"></div>
+          <div style="display:flex;gap:8px">
+            <input id="newCatInput" placeholder="Nova categoria (ex.: Sobremesas)" style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:9px">
+            <button class="btn btn-ghost btn-sm" onclick="addCategory()">Adicionar</button>
+          </div>
+        </div>
+        <div class="admin-toolbar">
+          <div class="pill" style="background:var(--gray-100);color:var(--ink-soft)" id="prodCountPill">0 produtos</div>
+          <button class="btn btn-primary btn-sm" onclick="openProductForm()">+ Novo produto</button>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="prod-table">
+            <thead><tr><th></th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="prodTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-settings" class="hidden">
+        <div class="admin-topbar"><h1>Configurações</h1></div>
+        <div class="dash-grid">
+          <div class="card panel">
+            <h3>Loja</h3>
+            <div class="field"><label>Nome da loja</label><input id="cfgStoreName"></div>
+            <div class="field"><label>Taxa de entrega (R$)</label><input id="cfgDeliveryFee" type="number" step="0.01" min="0"></div>
+            <div class="field"><label>Status</label>
+              <select id="cfgOpen"><option value="1">Loja aberta</option><option value="0">Loja fechada</option></select>
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">Salvar alterações</button>
+          </div>
+          <div class="card panel">
+            <h3>Segurança</h3>
+            <div class="field"><label>Nova senha do painel</label><input id="cfgNewPass" type="password" placeholder="Deixe em branco para manter"></div>
+            <button class="btn btn-ghost" onclick="changeAdminPassword()">Alterar senha</button>
+            <h3 style="margin-top:26px">Sincronização</h3>
+            <p style="font-size:13px;color:var(--ink-soft);line-height:1.5">
+              <span id="syncExplainer">Verificando conexão com o Firebase…</span>
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+let adminTab = "overview";
+let orderStatusFilter = "todos";
+
+function tryAdminLogin(){
+  const val = document.getElementById("adminPassInput").value;
+  if(val === STATE.config.adminPassword){
+    sessionStorage.setItem("sd_admin_logged","1");
+    showAdminShell();
+  } else {
+    showToast("Senha incorreta.");
+  }
+}
+function showAdminShell(){
+  document.getElementById("adminLoginScreen").classList.add("hidden");
+  document.getElementById("adminShell").classList.remove("hidden");
+  renderAdmin();
+}
+function adminLogout(){
+  sessionStorage.removeItem("sd_admin_logged");
+  document.getElementById("adminShell").classList.add("hidden");
+  document.getElementById("adminLoginScreen").classList.remove("hidden");
+}
+function toggleSidebar(){ document.getElementById("adminSidebar").classList.toggle("open"); }
+
+function setSyncStatus(on){
+  const pill = document.getElementById("syncPill");
+  const txt = document.getElementById("syncPillText");
+  const explainer = document.getElementById("syncExplainer");
+  if(!pill) return;
+  if(on){
+    pill.className="sync-pill on"; txt.textContent="Sincronizado em tempo real";
+    if(explainer) explainer.textContent="Este painel está conectado ao Firebase: pedidos feitos em qualquer celular aparecem aqui automaticamente.";
+  } else {
+    pill.className="sync-pill off"; txt.textContent="Modo local (sem sincronização)";
+    if(explainer) explainer.textContent="O Firebase não está configurado (ou está offline). Os dados ficam salvos apenas neste navegador. Preencha o firebaseConfig em data.js para sincronizar pedidos entre dispositivos.";
+  }
+}
+
+function setAdminTab(tab){
+  adminTab = tab;
+  ["overview","orders","menu","settings"].forEach(t=>{
+    document.getElementById("tab-"+t).classList.toggle("hidden", t!==tab);
+  });
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.tab===tab));
+  document.getElementById("adminSidebar").classList.remove("open");
+  renderAdmin();
+}
+
+function renderAdmin(){
+  if(document.getElementById("adminShell").classList.contains("hidden")) return;
+  setSyncStatus(useFirebase && !firestoreUnavailable);
+  document.getElementById("storeNameLabelAdmin").textContent = STATE.config.storeName;
+  if(adminTab==="overview") renderOverview();
+  if(adminTab==="orders") renderOrders();
+  if(adminTab==="menu") renderMenuAdmin();
+  if(adminTab==="settings") renderSettings();
+}
+
+function ordersForDay(dateStr){ return STATE.orders.filter(o=>o.dateStr===dateStr && o.status!=="cancelado"); }
+function lastNDays(n){
+  const arr=[];
+  for(let i=n-1;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    arr.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));
+  }
+  return arr;
+}
+
+function renderOverview(){
+  const today = todayStr();
+  const todays = ordersForDay(today);
+  const yestArr = lastNDays(2); const yesterday = yestArr[0];
+  const yestOrders = ordersForDay(yesterday);
+  const revToday = todays.reduce((s,o)=>s+o.total,0);
+  const revYest = yestOrders.reduce((s,o)=>s+o.total,0);
+  const openCount = todays.filter(o=>o.status!=="entregue").length;
+  const avgTicket = todays.length ? revToday/todays.length : 0;
+
+  document.getElementById("kpiOrdersToday").textContent = todays.length;
+  document.getElementById("kpiOrdersOpen").textContent = openCount+" em aberto";
+  document.getElementById("kpiRevenueToday").textContent = money(revToday);
+  const diff = revYest>0 ? ((revToday-revYest)/revYest*100) : (revToday>0?100:0);
+  const diffEl = document.getElementById("kpiRevenueVsYesterday");
+  diffEl.textContent = (diff>=0?"↑ ":"↓ ")+Math.abs(diff).toFixed(0)+"% vs. ontem";
+  diffEl.className = "kpi-sub " + (diff>=0?"up":"");
+  document.getElementById("kpiAvgTicket").textContent = money(avgTicket);
+
+  const days7 = lastNDays(7);
+  const rev7 = days7.map(d=>ordersForDay(d).reduce((s,o)=>s+o.total,0));
+  const totalRev7 = rev7.reduce((a,b)=>a+b,0);
+  const totalOrders7 = days7.reduce((s,d)=>s+ordersForDay(d).length,0);
+  document.getElementById("kpiRevenue7d").textContent = money(totalRev7);
+  document.getElementById("kpiOrders7d").textContent = totalOrders7+" pedidos";
+
+  drawChart(days7, rev7);
+
+  const itemCounts = {};
+  days7.forEach(d=>ordersForDay(d).forEach(o=>o.items.forEach(it=>{ itemCounts[it.name]=(itemCounts[it.name]||0)+it.qty; })));
+  const topList = Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById("topProductsList").innerHTML = topList.length ? topList.map(([name,count])=>
+    `<div class="top-product-row"><span class="tp-name">${escapeHtml(name)}</span><span class="tp-count">${count}x</span></div>`
+  ).join("") : `<p style="font-size:13px;color:var(--ink-soft)">Sem vendas no período.</p>`;
+
+  const statusCounts = {recebido:0,preparo:0,pronto:0,entregue:0,cancelado:0};
+  STATE.orders.filter(o=>o.dateStr===today).forEach(o=>statusCounts[o.status]=(statusCounts[o.status]||0)+1);
+  document.getElementById("statusBreakdown").innerHTML = Object.entries(statusCounts).map(([s,c])=>
+    `<div class="top-product-row"><span class="status-badge ${s}">${STATUS_LABEL[s]}</span><span class="tp-count">${c}</span></div>`
+  ).join("");
+
+  const payCounts = {pix:0,cartao:0,dinheiro:0};
+  days7.forEach(d=>ordersForDay(d).forEach(o=>payCounts[o.payment]=(payCounts[o.payment]||0)+1));
+  document.getElementById("paymentBreakdown").innerHTML = Object.entries(payCounts).map(([p,c])=>
+    `<div class="top-product-row"><span class="tp-name">${PAY_LABEL[p]}</span><span class="tp-count">${c}</span></div>`
+  ).join("");
+}
+
+function drawChart(labels, values){
+  const canvas = document.getElementById("salesChart");
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 400, h = 180;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,w,h);
+  const max = Math.max(...values, 1);
+  const padB = 26, padT = 10, barGap = 14;
+  const barW = (w - barGap*(values.length+1)) / values.length;
+  values.forEach((v,i)=>{
+    const barH = (v/max) * (h-padB-padT);
+    const x = barGap + i*(barW+barGap);
+    const y = h - padB - barH;
+    const grad = ctx.createLinearGradient(0,y,0,h-padB);
+    grad.addColorStop(0, "#7440AD"); grad.addColorStop(1, "#4B1F7A");
+    ctx.fillStyle = grad;
+    roundRect(ctx, x, y, barW, Math.max(barH,2), 5);
+    ctx.fill();
+    ctx.fillStyle = "#5B4D72";
+    ctx.font = "11px Inter, sans-serif";
+    ctx.textAlign = "center";
+    const [,m,d] = labels[i].split("-");
+    ctx.fillText(d+"/"+m, x+barW/2, h-8);
+  });
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function renderOrders(){
+  const counts = {todos: STATE.orders.length};
+  STATUS_FLOW.concat("cancelado").forEach(s=>counts[s]=STATE.orders.filter(o=>o.status===s).length);
+  const tabs = [["todos","Todos"], ["recebido","Recebido"], ["preparo","Em preparo"], ["pronto","Pronto"], ["entregue","Entregue"], ["cancelado","Cancelado"]];
+  document.getElementById("orderStatusTabs").innerHTML = tabs.map(([key,label])=>
+    `<button class="status-tab ${orderStatusFilter===key?'active':''}" onclick="setOrderFilter('${key}')">${label}<span class="n">${counts[key]||0}</span></button>`
+  ).join("");
+
+  let list = STATE.orders.slice().sort((a,b)=>b.createdAt-a.createdAt);
+  if(orderStatusFilter!=="todos") list = list.filter(o=>o.status===orderStatusFilter);
+
+  document.getElementById("orderList").innerHTML = list.length ? list.map(o=>{
+    const time = new Date(o.createdAt).toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
+    const itemsTxt = o.items.map(it=>`${it.qty}x ${it.name}`).join(", ");
+    const nextIdx = STATUS_FLOW.indexOf(o.status);
+    const nextStatus = nextIdx>=0 && nextIdx<STATUS_FLOW.length-1 ? STATUS_FLOW[nextIdx+1] : null;
+    return `<div class="card order-card">
+      <div class="oc-code">${o.code}</div>
+      <div class="oc-main">
+        <div class="oc-name">${escapeHtml(o.customerName)}</div>
+        <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
+        <div class="oc-items">${escapeHtml(itemsTxt)}</div>
+        <div class="oc-meta" style="margin-top:4px">${escapeHtml(o.address)}</div>
+      </div>
+      <div class="oc-right">
+        <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
+        <span class="oc-total">${money(o.total)}</span>
+        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="updateOrderStatus('${o.id}','${nextStatus}',renderOrders)">Marcar ${STATUS_LABEL[nextStatus].toLowerCase()}</button>` : ""}
+        ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
+      </div>
+    </div>`;
+  }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
+}
+function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
+
+function renderMenuAdmin(){
+  document.getElementById("catManageList").innerHTML = STATE.config.categories.map(c=>
+    `<div class="cat-manage-item">${escapeHtml(c)}<button onclick="removeCategory('${escapeAttr(c)}')">✕</button></div>`
+  ).join("");
+  document.getElementById("prodCountPill").textContent = STATE.products.length + (STATE.products.length===1?" produto":" produtos");
+  document.getElementById("prodTableBody").innerHTML = STATE.products.map(p=>`
+    <tr>
+      <td>${p.image?`<img class="prod-thumb" src="${escapeAttr(p.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍽️</div>`}</td>
+      <td><b>${escapeHtml(p.name)}</b></td>
+      <td>${escapeHtml(p.category)}</td>
+      <td style="font-family:var(--font-mono)">${money(p.price)}</td>
+      <td><button class="toggle ${p.active?'on':''}" onclick="toggleProductActive('${p.id}')"></button></td>
+      <td>
+        <button class="icon-btn" onclick="openProductForm('${p.id}')">✎</button>
+        <button class="icon-btn danger" onclick="deleteProduct('${p.id}')">🗑</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum produto cadastrado ainda.</td></tr>`;
+}
+function toggleProductActive(id){
+  const p = STATE.products.find(x=>x.id===id);
+  if(!p) return;
+  p.active = !p.active;
+  saveProduct(p, renderMenuAdmin);
+}
+function deleteProduct(id){
+  if(!confirm("Remover este produto do cardápio?")) return;
+  deleteProductData(id, renderMenuAdmin);
+}
+function addCategory(){
+  const input = document.getElementById("newCatInput");
+  const val = input.value.trim();
+  if(!val) return;
+  if(STATE.config.categories.includes(val)){ showToast("Categoria já existe."); return; }
+  STATE.config.categories.push(val);
+  saveConfig();
+  input.value = "";
+  renderMenuAdmin();
+}
+function removeCategory(c){
+  if(STATE.products.some(p=>p.category===c)){ showToast("Remova ou realoque os produtos dessa categoria antes."); return; }
+  STATE.config.categories = STATE.config.categories.filter(x=>x!==c);
+  saveConfig();
+  renderMenuAdmin();
+}
+
+function openProductForm(id){
+  const editing = id ? STATE.products.find(x=>x.id===id) : null;
+  const p = editing || {id: uid(), name:"", description:"", price:"", category: STATE.config.categories[0]||"", image:"", active:true};
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${editing?"Editar produto":"Novo produto"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <div class="field"><label>Nome</label><input id="pfName" value="${escapeAttr(p.name)}"></div>
+        <div class="field"><label>Descrição</label><textarea id="pfDesc">${escapeHtml(p.description)}</textarea></div>
+        <div class="field"><label>Preço (R$)</label><input id="pfPrice" type="number" step="0.01" min="0" value="${p.price}"></div>
+        <div class="field"><label>Categoria</label>
+          <select id="pfCategory">${STATE.config.categories.map(c=>`<option value="${escapeAttr(c)}" ${c===p.category?'selected':''}>${escapeHtml(c)}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>URL da imagem (opcional)</label><input id="pfImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
+        <button class="btn btn-primary btn-block" onclick="submitProductForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar produto"}</button>
+      </div>
+    </div>`);
+}
+function submitProductForm(id, editing){
+  const name = document.getElementById("pfName").value.trim();
+  const description = document.getElementById("pfDesc").value.trim();
+  const price = parseFloat(document.getElementById("pfPrice").value);
+  const category = document.getElementById("pfCategory").value;
+  const image = document.getElementById("pfImage").value.trim();
+  if(!name || isNaN(price)){ showToast("Preencha nome e preço."); return; }
+  const existing = editing ? STATE.products.find(x=>x.id===id) : null;
+  const product = {id, name, description, price, category, image, active: existing ? existing.active : true};
+  saveProduct(product, ()=>{ closeScrim(); showToast(editing ? "Produto atualizado." : "Produto adicionado."); renderMenuAdmin(); });
+}
+
+function renderSettings(){
+  document.getElementById("cfgStoreName").value = STATE.config.storeName;
+  document.getElementById("cfgDeliveryFee").value = STATE.config.deliveryFee;
+  document.getElementById("cfgOpen").value = STATE.config.isOpen ? "1" : "0";
+}
+function saveSettings(){
+  STATE.config.storeName = document.getElementById("cfgStoreName").value.trim() || "Minha Loja";
+  STATE.config.deliveryFee = parseFloat(document.getElementById("cfgDeliveryFee").value) || 0;
+  STATE.config.isOpen = document.getElementById("cfgOpen").value === "1";
+  saveConfig();
+  showToast("Configurações salvas.");
+}
+function changeAdminPassword(){
+  const val = document.getElementById("cfgNewPass").value;
+  if(!val){ showToast("Digite uma nova senha."); return; }
+  STATE.config.adminPassword = val;
+  saveConfig();
+  document.getElementById("cfgNewPass").value = "";
+  showToast("Senha alterada.");
+}
+
+/* ---------- scrim helper (usado pelo formulário de produto) ---------- */
+function openScrim(innerHtml){
+  closeScrim();
+  const div = document.createElement("div");
+  div.className = "scrim"; div.id = "activeScrim";
+  div.onclick = closeScrim;
+  div.innerHTML = innerHtml;
+  document.body.appendChild(div);
+}
+function closeScrim(){ const s = document.getElementById("activeScrim"); if(s) s.remove(); }
+
+/* =====================================================================
+   INIT
+===================================================================== */
+initData(renderAdmin);
+if(sessionStorage.getItem("sd_admin_logged") === "1"){
+  showAdminShell();
+}
+</script>
+</body>
+</html>
