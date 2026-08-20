@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Entrega — Sabor Direto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+#courierView{min-height:100vh;padding-bottom:40px;}
+.courier-header{padding:22px 0 28px;}
+.courier-header .brand{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.courier-header .mark{width:34px;height:34px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
+.courier-header .mark::after{content:"";position:absolute;inset:7px;background:var(--purple-900);border-radius:2px;}
+.courier-header .brand-name{color:var(--white);font-size:16px;font-weight:700;}
+.courier-header h1{color:var(--white);font-size:21px;}
+.courier-main{padding:20px;max-width:480px;margin:0 auto;}
+.courier-card{padding:22px;}
+.courier-code{font-family:var(--font-mono);font-weight:700;font-size:22px;color:var(--purple-700);background:var(--gray-100);display:inline-block;padding:6px 14px;border-radius:10px;margin-bottom:14px;}
+.courier-name{font-size:18px;font-weight:700;font-family:var(--font-display);}
+.courier-address{font-size:14.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
+.courier-items{font-size:13.5px;color:var(--ink-soft);background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-top:14px;line-height:1.6;}
+.courier-status-msg{margin-top:14px;font-size:12.5px;color:var(--teal);font-weight:600;text-align:center;min-height:18px;}
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+<div id="courierView">
+  <header class="courier-header diamond-field">
+    <div class="container">
+      <div class="brand">
+        <span class="mark"></span>
+        <span class="brand-name" id="storeNameLabel">Sabor Direto</span>
+      </div>
+      <h1>Detalhes da entrega</h1>
+    </div>
+  </header>
+
+  <main class="courier-main" id="courierContent">
+    <div class="empty-state">Carregando pedido...</div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const orderId = params.get("id");
+
+function renderCourierPage(){
+  const nameLabel = document.getElementById("storeNameLabel");
+  if(nameLabel) nameLabel.textContent = STATE.config.storeName || "Sabor Direto";
+
+  const content = document.getElementById("courierContent");
+  if(!orderId){
+    content.innerHTML = `<div class="card empty-state">Link inválido — nenhum pedido informado.</div>`;
+    return;
+  }
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(!order){
+    content.innerHTML = `<div class="card empty-state">Pedido não encontrado (ou já foi removido).</div>`;
+    return;
+  }
+  const mapsUrl = order.location ? buildMapsUrl(order.location) : null;
+  const itemsTxt = order.items.map(it=>`${it.qty}x ${escapeHtml(it.name)}`).join(", ");
+  const trocoHtml = (order.payment==="dinheiro" && order.changeFor)
+    ? `<div class="troco-highlight" style="margin-top:12px">💵 Troco para ${money(order.changeFor)} — levar <b>${money(order.changeAmount)}</b> de troco</div>`
+    : "";
+
+  const draft = document.getElementById("courierAlertStatus");
+  const draftText = draft ? draft.textContent : "";
+
+  content.innerHTML = `
+    <div class="card courier-card">
+      <div class="courier-code">${order.code}</div>
+      <div class="courier-name">${escapeHtml(order.customerName)}</div>
+      <div class="courier-address">${escapeHtml(order.address)}${order.bairro ? " — " + escapeHtml(order.bairro) : ""}</div>
+      <div class="courier-items"><b>Itens:</b><br>${itemsTxt}</div>
+      ${trocoHtml}
+      ${mapsUrl
+        ? `<a class="btn btn-primary btn-block" style="margin-top:18px" href="${mapsUrl}" target="_blank">📍 Abrir localização no mapa</a>`
+        : `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:16px">O cliente não compartilhou localização exata — use o endereço acima.</p>`}
+      <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="sendCourierAlert('chegando')">🛵 Avisar que estou chegando</button>
+      <button class="btn btn-gold btn-block" style="margin-top:10px" onclick="sendCourierAlert('chegou')">🚪 Cheguei na porta</button>
+      <div class="courier-status-msg" id="courierAlertStatus">${draftText}</div>
+    </div>`;
+}
+
+function sendCourierAlert(type){
+  if(!orderId) return;
+  const payload = {type, ts: Date.now()};
+  const statusEl = document.getElementById("courierAlertStatus");
+  if(useFirebase){
+    db.collection("orders").doc(orderId).update({courierAlert: payload}).then(()=>{
+      if(statusEl) statusEl.textContent = type==="chegou" ? "✅ Cliente avisado que você chegou." : "✅ Cliente avisado que você está chegando.";
+    }).catch(()=>showToast("Não consegui enviar o aviso. Tente de novo."));
+  } else {
+    showToast("Sem conexão em tempo real — o cliente não vai receber esse aviso agora.");
+  }
+}
+
+initData(renderCourierPage);
+</script>
+</body>
+</html>
