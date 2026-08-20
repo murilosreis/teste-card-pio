@@ -77,6 +77,15 @@
 .detail-body h3{font-size:20px;margin-bottom:8px;}
 .detail-body .desc{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin-bottom:10px;}
 .combo-includes{font-size:13px;color:var(--ink-soft);background:var(--gray-50);padding:10px 12px;border-radius:10px;margin-bottom:14px;}
+.choice-group{margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-100);}
+.choice-group-title{font-size:13.5px;font-weight:700;display:block;margin-bottom:8px;}
+.req-tag{font-size:10px;font-weight:700;color:var(--red);background:var(--red-100);padding:2px 7px;border-radius:6px;vertical-align:middle;}
+.opt-tag{font-size:10px;font-weight:700;color:var(--ink-soft);background:var(--gray-100);padding:2px 7px;border-radius:6px;vertical-align:middle;}
+.choice-options{display:flex;flex-direction:column;gap:2px;}
+.choice-opt{display:flex;align-items:center;gap:10px;padding:8px 4px;font-size:13.5px;cursor:pointer;}
+.choice-opt input{flex-shrink:0;}
+.choice-opt span:first-of-type{flex:1;}
+.choice-opt-price{font-family:var(--font-mono);color:var(--purple-700);font-size:12px;font-weight:600;}
 .promo-tag-line{color:var(--red);font-weight:700;font-size:12.5px;margin-bottom:10px;}
 .qty-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .qty-control{display:flex;align-items:center;gap:14px;background:var(--gray-100);border-radius:12px;padding:6px 8px;}
@@ -110,6 +119,8 @@
 .track-step .dot{width:9px;height:9px;border-radius:50%;background:var(--gray-200);flex-shrink:0;}
 .track-step.done{color:var(--ink);font-weight:600;}
 .track-step.done .dot{background:var(--teal);}
+.track-step.current{color:var(--purple-700);font-weight:700;}
+.track-step.current .dot{background:var(--gold-500);}
 
 .floating-cart{position:fixed;left:16px;right:16px;bottom:16px;max-width:420px;margin:0 auto;background:var(--purple-700);color:var(--white);border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-lg);z-index:20;}
 .floating-cart .fc-info{font-size:13px;color:var(--gold-300);font-weight:600;}
@@ -146,7 +157,7 @@
       <div class="store-status">
         <span class="pill"><span class="dot" id="storeStatusDot"></span><span id="storeStatusText">Loja aberta agora</span></span>
       </div>
-      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTracking(getMyMostRecentOrderId())">📦 Acompanhar pedido <span id="myOrderPillCode"></span> →</button>
+      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTrackingWithVerification(getMyMostRecentOrderId())">📦 Acompanhar pedido <span id="myOrderPillCode"></span> →</button>
     </div>
   </header>
 
@@ -246,6 +257,7 @@ function productCardHtml(p){
   </div>`;
 }
 function comboCardHtml(c){
+  const hasRequiredChoice = (c.choiceGroups||[]).some(g=>g.required && g.productIds && g.productIds.length);
   return `<div class="product-card" onclick="openItemDetail('${c.id}','combo')">
     ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">🍔</div>`}
     <div class="product-body">
@@ -253,7 +265,7 @@ function comboCardHtml(c){
       <div class="product-desc">${escapeHtml(c.description||"")}</div>
       <div class="product-foot">
         <span class="product-price">${money(c.price)}</span>
-        <button class="add-btn" onclick="event.stopPropagation();quickAddCombo('${c.id}')">+</button>
+        ${hasRequiredChoice ? "" : `<button class="add-btn" onclick="event.stopPropagation();quickAddCombo('${c.id}')">+</button>`}
       </div>
     </div>
   </div>`;
@@ -319,7 +331,7 @@ function openPromotionDetail(promoId){
 }
 
 /* ---------- ficha de produto / combo ---------- */
-let detailQty = 1, detailProduct = null;
+let detailQty = 1, detailProduct = null, detailChoices = {};
 function openItemDetail(id, kind){
   let item = kind==="combo" ? STATE.combos.find(x=>x.id===id) : STATE.products.find(x=>x.id===id);
   if(!item) return;
@@ -329,7 +341,25 @@ function openItemDetail(id, kind){
 function showDetailSheet(item){
   detailProduct = item;
   detailQty = 1;
+  detailChoices = {};
+  (item.choiceGroups||[]).forEach(g=>{ detailChoices[g.id] = []; });
   const includedNames = item.isCombo ? (item.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean) : [];
+  const choiceGroupsHtml = (item.choiceGroups||[]).map(g=>{
+    const options = (g.productIds||[]).map(pid=>{ const p = STATE.products.find(x=>x.id===pid); return p ? {id:p.id, name:p.name, price:p.price} : null; }).filter(Boolean);
+    if(!options.length) return "";
+    const inputType = g.type === "single" ? "radio" : "checkbox";
+    return `<div class="choice-group">
+      <label class="choice-group-title">${escapeHtml(g.label)} ${g.required ? '<span class="req-tag">obrigatório</span>' : '<span class="opt-tag">opcional</span>'}</label>
+      <div class="choice-options">
+        ${options.map(o=>`
+          <label class="choice-opt">
+            <input type="${inputType}" name="choice-${g.id}" value="${o.id}" onchange="updateDetailChoice('${g.id}','${o.id}','${inputType}',this.checked)">
+            <span>${escapeHtml(o.name)}</span>
+            ${g.chargeExtra && o.price>0 ? `<span class="choice-opt-price">+${money(o.price)}</span>` : ""}
+          </label>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       ${item.image ? `<img class="detail-img" src="${escapeAttr(item.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">${item.isCombo?'🍔':'🍽️'}</div>`}
@@ -338,7 +368,8 @@ function showDetailSheet(item){
         ${item.originalPrice ? `<div class="promo-tag-line">🔥 Promoção — de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
         <div class="desc">${escapeHtml(item.description||"")}</div>
         ${includedNames.length ? `<div class="combo-includes">Inclui: <b>${includedNames.map(escapeHtml).join(", ")}</b></div>` : ""}
-        <div class="field"><label>Observações (opcional)</label><textarea id="detailNote" placeholder="Ex.: sem cebola, sem gelo, ponto da carne..."></textarea></div>
+        ${choiceGroupsHtml}
+        <div class="field" style="margin-top:16px"><label>Observações (opcional)</label><textarea id="detailNote" placeholder="Ex.: sem cebola, sem gelo, ponto da carne..."></textarea></div>
         <div class="qty-row">
           <div class="qty-control">
             <button onclick="changeDetailQty(-1)">−</button>
@@ -351,15 +382,40 @@ function showDetailSheet(item){
       </div>
     </div>`);
 }
+function computeDetailUnitPrice(){
+  let unit = detailProduct.price;
+  (detailProduct.choiceGroups||[]).forEach(g=>{
+    if(g.chargeExtra){
+      (detailChoices[g.id]||[]).forEach(pid=>{
+        const p = STATE.products.find(x=>x.id===pid);
+        if(p) unit += p.price;
+      });
+    }
+  });
+  return unit;
+}
+function updateDetailChoice(groupId, productId, inputType, checked){
+  if(!detailChoices[groupId]) detailChoices[groupId] = [];
+  if(inputType === "radio"){
+    detailChoices[groupId] = checked ? [productId] : [];
+  } else {
+    if(checked){ if(!detailChoices[groupId].includes(productId)) detailChoices[groupId].push(productId); }
+    else { detailChoices[groupId] = detailChoices[groupId].filter(id=>id!==productId); }
+  }
+  const label = document.getElementById("detailPriceLabel");
+  if(label) label.textContent = money(computeDetailUnitPrice() * detailQty);
+}
 function changeDetailQty(d){
   detailQty = Math.max(1, detailQty + d);
   document.getElementById("detailQtyLabel").textContent = detailQty;
-  document.getElementById("detailPriceLabel").textContent = money(detailProduct.price * detailQty);
+  document.getElementById("detailPriceLabel").textContent = money(computeDetailUnitPrice() * detailQty);
 }
 function confirmAddDetail(){
+  const missing = (detailProduct.choiceGroups||[]).find(g=>g.required && (!detailChoices[g.id] || detailChoices[g.id].length===0));
+  if(missing){ showToast(`Escolha uma opção em "${missing.label}".`); return; }
   const noteEl = document.getElementById("detailNote");
   const note = noteEl ? noteEl.value.trim() : "";
-  addToCart(detailProduct, detailQty, note);
+  addToCart(detailProduct, detailQty, note, detailChoices);
   closeScrim();
   showToast(`${detailProduct.name} adicionado à sacola`);
 }
@@ -423,6 +479,33 @@ function openTracking(orderId){
     else showToast("Pedido não encontrado neste navegador.");
   }
 }
+function openTrackingWithVerification(orderId){
+  if(!orderId) return;
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>Confirmar identidade</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px">Para proteger os dados do seu pedido, confirme o telefone usado nele.</p>
+        <div class="field"><label>Telefone usado no pedido</label><input id="verifyPhone" placeholder="(00) 00000-0000" onkeydown="if(event.key==='Enter')confirmTrackingAccess('${orderId}')"></div>
+        <button class="btn btn-primary btn-block" onclick="confirmTrackingAccess('${orderId}')">Ver meu pedido</button>
+      </div>
+    </div>`);
+}
+function confirmTrackingAccess(orderId){
+  const phone = document.getElementById("verifyPhone").value.trim().replace(/\D/g,"");
+  if(!phone){ showToast("Digite o telefone."); return; }
+  if(useFirebase){
+    db.collection("orders").doc(orderId).get().then(doc=>{
+      if(!doc.exists){ showToast("Pedido não encontrado."); return; }
+      if((doc.data().phone||"").replace(/\D/g,"") === phone){ openTracking(orderId); }
+      else { showToast("Telefone não confere com o pedido."); }
+    }).catch(()=>showToast("Erro ao verificar o pedido."));
+  } else {
+    const order = STATE.orders.find(o=>o.id===orderId);
+    if(order && (order.phone||"").replace(/\D/g,"") === phone){ openTracking(orderId); }
+    else { showToast("Telefone não confere com o pedido."); }
+  }
+}
 function renderTrackingContent(order){
   const wrap = document.getElementById("trackingSheetInner");
   if(!wrap) return;
@@ -441,7 +524,12 @@ function renderTrackingContent(order){
       return `<div class="track-step ${cls}"><span class="dot"></span>${STATUS_LABEL[s]}</div>`;
     }).join("");
   }
-  const itemsTxt = order.items.map(it=>`${it.qty}x ${escapeHtml(it.name)}${it.note?` <i>(Obs: ${escapeHtml(it.note)})</i>`:""}`).join("<br>");
+  const itemsTxt = order.items.map(it=>{
+    let t = `${it.qty}x ${escapeHtml(it.name)}`;
+    if(it.choices && it.choices.length) t += `<br><span style="color:var(--ink-soft);font-size:12px">${it.choices.map(escapeHtml).join(" · ")}</span>`;
+    if(it.note) t += `<br><i style="color:var(--ink-soft);font-size:12px">Obs: ${escapeHtml(it.note)}</i>`;
+    return t;
+  }).join("<br>");
   const messages = order.messages || [];
   const messagesHtml = messages.length ? messages.map(m=>`
     <div class="chat-msg ${m.sender==='cliente'?'from-me':'from-store'}"><div class="chat-bubble">${escapeHtml(m.text)}</div></div>
@@ -515,10 +603,22 @@ function submitTrackingLookup(){
 /* =====================================================================
    CARRINHO
 ===================================================================== */
-function addToCart(item, qty, note){
+function addToCart(item, qty, note, choices){
   note = (note||"").trim();
   const isCombo = !!item.isCombo;
-  const existing = (!isCombo && !note) ? cart.find(c=>c.productId===item.id && !c.note && !c.isCombo) : null;
+  choices = choices || {};
+  const choiceLabels = [];
+  let extraPrice = 0;
+  (item.choiceGroups||[]).forEach(g=>{
+    const pickedNames = (choices[g.id]||[]).map(pid=>{
+      const p = STATE.products.find(x=>x.id===pid);
+      if(p && g.chargeExtra) extraPrice += p.price;
+      return p ? p.name : null;
+    }).filter(Boolean);
+    if(pickedNames.length) choiceLabels.push(`${g.label}: ${pickedNames.join(", ")}`);
+  });
+  const finalPrice = item.price + extraPrice;
+  const existing = (!isCombo && !note && !choiceLabels.length) ? cart.find(c=>c.productId===item.id && !c.note && !c.isCombo && (!c.choiceLabels||!c.choiceLabels.length)) : null;
   if(existing){
     existing.qty += qty;
   } else {
@@ -526,7 +626,7 @@ function addToCart(item, qty, note){
     if(isCombo){
       comboItems = (item.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean);
     }
-    cart.push({ lineId: uid(), productId:item.id, name:item.name, price:item.price, image:item.image, qty, note, isCombo, comboItems });
+    cart.push({ lineId: uid(), productId:item.id, name:item.name, price:finalPrice, image:item.image, qty, note, isCombo, comboItems, choiceLabels });
   }
   renderCartWidgets();
 }
@@ -583,6 +683,7 @@ function renderCartSheetContent(){
           <div class="ci-info">
             <div class="ci-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
             <div class="ci-price">${money(c.price)} un.</div>
+            ${c.choiceLabels && c.choiceLabels.length ? c.choiceLabels.map(l=>`<div class="ci-note">${escapeHtml(l)}</div>`).join("") : ""}
             ${c.note ? `<div class="ci-note">Obs: ${escapeHtml(c.note)}</div>` : ""}
             <div class="ci-qty">
               <button onclick="changeCartQty('${c.lineId}',-1)">−</button>
@@ -604,9 +705,11 @@ function renderCartSheetContent(){
 /* ---------- checkout ---------- */
 let selectedPayment = "pix";
 let selectedBairro = null;
+let capturedLocation = null;
 function openCheckout(){
   selectedPayment = "pix";
   selectedBairro = null;
+  capturedLocation = null;
   const sub = cartSubtotal();
   const fees = STATE.config.deliveryFees || [];
   const initialFee = fees.length ? 0 : (STATE.config.deliveryFee||0);
@@ -617,6 +720,7 @@ function openCheckout(){
         <div class="field"><label>Seu nome</label><input id="chkName" placeholder="Como podemos te chamar?"></div>
         <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" placeholder="(00) 00000-0000"></div>
         <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" placeholder="Rua, número, bairro, complemento"></textarea></div>
+        <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
         ${fees.length ? `
         <div class="field"><label>Bairro de entrega</label>
           <select id="chkBairro" onchange="updateCheckoutFee()">
@@ -632,10 +736,31 @@ function openCheckout(){
             <div class="pay-opt" id="pay-dinheiro" onclick="selectPayment('dinheiro')">Dinheiro</div>
           </div>
         </div>
+        <div class="field hidden" id="trocoField">
+          <label>Vai pagar com quanto? (pra calcular o troco)</label>
+          <input id="chkTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 — deixe em branco se for o valor exato">
+        </div>
         <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span id="checkoutTotalValue">${money(sub+initialFee)}</span></div>
         <button class="btn btn-gold btn-block" onclick="submitOrder()">Confirmar e pagar</button>
       </div>
     </div>`);
+}
+function requestLocation(){
+  const btn = document.getElementById("shareLocationBtn");
+  if(!navigator.geolocation){ showToast("Seu navegador não suporta localização."); return; }
+  if(btn){ btn.textContent = "Obtendo localização..."; btn.disabled = true; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      capturedLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
+      if(btn){ btn.textContent = "✅ Localização compartilhada"; }
+      showToast("Localização capturada — vai ajudar o motoboy a chegar certinho.");
+    },
+    ()=>{
+      if(btn){ btn.textContent = "📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)"; btn.disabled = false; }
+      showToast("Não consegui pegar sua localização — pode continuar sem ela.");
+    },
+    {enableHighAccuracy:true, timeout:10000}
+  );
 }
 function updateCheckoutFee(){
   const sel = document.getElementById("chkBairro");
@@ -648,6 +773,7 @@ function updateCheckoutFee(){
 function selectPayment(p){
   selectedPayment = p;
   ["pix","cartao","dinheiro"].forEach(k=>document.getElementById("pay-"+k).classList.toggle("active", k===p));
+  document.getElementById("trocoField").classList.toggle("hidden", p!=="dinheiro");
 }
 function submitOrder(){
   const name = document.getElementById("chkName").value.trim();
@@ -662,19 +788,33 @@ function submitOrder(){
     fee = selectedBairro.fee;
     bairroLabel = selectedBairro.bairro;
   }
+  const sub = cartSubtotal();
+  const total = sub + fee;
+
+  let changeFor = null, changeAmount = 0;
+  if(selectedPayment === "dinheiro"){
+    const trocoInput = document.getElementById("chkTrocoPara");
+    const val = trocoInput ? trocoInput.value.trim() : "";
+    if(val){
+      changeFor = parseFloat(val);
+      if(isNaN(changeFor) || changeFor < total){ showToast("O valor pra troco precisa ser maior ou igual ao total do pedido."); return; }
+      changeAmount = changeFor - total;
+    }
+  }
+
   // abre a aba do WhatsApp em branco AGORA, ainda dentro do clique do usuário,
   // para o navegador não bloquear o popup — o endereço é preenchido assim que o pedido for gerado
   const waWindow = window.open("", "_blank");
-  const sub = cartSubtotal();
   getNextOrderNumber().then(num=>{
     const code = "#" + String(num).padStart(4,"0");
     const order = {
       code,
       customerName: name,
       phone, address, bairro: bairroLabel,
-      items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo})),
-      subtotal: sub, deliveryFee: fee, total: sub+fee,
-      payment: selectedPayment,
+      location: capturedLocation,
+      items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo, choices:c.choiceLabels||[]})),
+      subtotal: sub, deliveryFee: fee, total,
+      payment: selectedPayment, changeFor, changeAmount,
       status: STATE.config.autoAcceptOrders ? "preparo" : "pendente",
       createdAt: Date.now(),
       dateStr: todayStr(),
@@ -700,6 +840,7 @@ function showOrderConfirmation(order, waUrl){
         <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
         <div class="order-code">${order.code}</div>
         <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
+        ${order.changeFor ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">💵 Troco combinado para ${money(order.changeFor)} (troco de ${money(order.changeAmount)})</div>` : ""}
         ${waUrl ? `<a class="btn btn-gold btn-block" style="margin-top:16px" href="${waUrl}" target="_blank">Enviar pelo WhatsApp</a><div style="font-size:11.5px;color:var(--gray-300);margin-top:6px">Se não abriu sozinho, toque no botão acima para confirmar por lá.</div>` : ""}
         <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openTracking('${order.id}')">📦 Acompanhar meu pedido</button>
         <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeScrim()">Fechar</button>

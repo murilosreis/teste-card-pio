@@ -79,6 +79,7 @@
 .order-card .oc-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
 .order-card .oc-items{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
 .order-card .oc-note{color:var(--purple-700);font-weight:600;}
+.troco-highlight{background:var(--amber-100);color:#9A6A0E;font-weight:700;font-size:12.5px;padding:6px 10px;border-radius:8px;margin-top:8px;display:inline-block;}
 .order-card .oc-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
 .order-card .oc-total{font-family:var(--font-mono);font-weight:700;}
 
@@ -747,7 +748,8 @@ function renderOrders(){
     const time = new Date(o.createdAt).toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
     const itemsTxt = o.items.map(it=>{
       let t = `${it.qty}x ${it.name}${it.isCombo?' (combo)':''}`;
-      if(it.note) t += ` — <span class="oc-note">Obs: ${escapeHtml(it.note)}</span>`;
+      if(it.choices && it.choices.length) t += `<br>&nbsp;&nbsp;<span class="oc-note">${it.choices.map(escapeHtml).join(" · ")}</span>`;
+      if(it.note) t += `<br>&nbsp;&nbsp;<span class="oc-note">Obs: ${escapeHtml(it.note)}</span>`;
       return t;
     }).join("<br>");
     let nextStatus = null, nextLabel = "";
@@ -763,6 +765,11 @@ function renderOrders(){
         <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
         <div class="oc-items">${itemsTxt}</div>
         <div class="oc-meta" style="margin-top:4px">${escapeHtml(o.address)}</div>
+        ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">💵 Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
+        ${o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+          <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
+          <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
+        </div>` : ""}
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
@@ -775,6 +782,15 @@ function renderOrders(){
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
+function copyMapsLink(lat, lng){
+  const url = buildMapsUrl({lat, lng});
+  if(!url) return;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>showToast("Link do mapa copiado!")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
+  } else {
+    showToast("Seu navegador não permite copiar automaticamente.");
+  }
+}
 
 /* ---------- conversa do pedido (dúvidas do cliente) ---------- */
 function openOrderChat(orderId){
@@ -830,7 +846,7 @@ function sendAdminChatMessage(orderId){
 let adminChatUnsub = null;
 function advanceOrderStatus(orderId, status){
   const order = STATE.orders.find(o=>o.id===orderId);
-  if(order && ["preparo","saiu_entrega","entregue"].includes(status)){
+  if(order && status === "entregue"){
     const serverUrl = (STATE.config.waServerUrl||"").trim();
     const message = buildCustomerStatusMessage(order, status);
     if(serverUrl){
@@ -957,7 +973,8 @@ function deleteCombo(id){
 }
 function openComboForm(id){
   const editing = id ? STATE.combos.find(x=>x.id===id) : null;
-  const c = editing || {id: uid(), name:"", description:"", price:"", image:"", productIds:[], active:true};
+  const c = editing || {id: uid(), name:"", description:"", price:"", image:"", productIds:[], active:true, choiceGroups:[]};
+  comboFormChoiceGroups = JSON.parse(JSON.stringify(c.choiceGroups || []));
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>${editing?"Editar combo":"Novo combo"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
@@ -966,16 +983,65 @@ function openComboForm(id){
         <div class="field"><label>Descrição</label><textarea id="cfDesc">${escapeHtml(c.description)}</textarea></div>
         <div class="field"><label>Preço do combo (R$)</label><input id="cfPrice" type="number" step="0.01" min="0" value="${c.price}"></div>
         <div class="field"><label>URL da imagem (opcional)</label><input id="cfImage" value="${escapeAttr(c.image||"")}" placeholder="https://..."></div>
-        <div class="field"><label>Produtos incluídos no combo</label>
+        <div class="field"><label>Produtos incluídos no combo (fixos)</label>
           <div class="check-list">
             ${STATE.products.length ? STATE.products.map(p=>`
               <label><input type="checkbox" value="${p.id}" ${(c.productIds||[]).includes(p.id)?'checked':''} class="cf-item-check"> ${escapeHtml(p.name)}</label>
             `).join("") : `<span style="font-size:13px;color:var(--ink-soft)">Cadastre produtos primeiro na aba Cardápio.</span>`}
           </div>
         </div>
-        <button class="btn btn-primary btn-block" onclick="submitComboForm('${c.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar combo"}</button>
+        <div class="field">
+          <label>Grupos de escolha do cliente (opcional)</label>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5">Ex.: "Escolha o refrigerante" com as opções de lata; ou "Quer molho?" com ketchup e maionese. As opções vêm dos produtos já cadastrados — de qualquer categoria.</p>
+          <div id="comboChoiceGroupsList"></div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addChoiceGroup()">+ Adicionar grupo de escolha</button>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:18px" onclick="submitComboForm('${c.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar combo"}</button>
       </div>
     </div>`);
+  renderComboChoiceGroupsList();
+}
+let comboFormChoiceGroups = [];
+function addChoiceGroup(){
+  comboFormChoiceGroups.push({id: uid(), label:"", type:"single", required:true, chargeExtra:false, productIds:[]});
+  renderComboChoiceGroupsList();
+}
+function removeChoiceGroupUI(groupId){
+  comboFormChoiceGroups = comboFormChoiceGroups.filter(g=>g.id!==groupId);
+  renderComboChoiceGroupsList();
+}
+function updateChoiceGroupField(groupId, field, value){
+  const g = comboFormChoiceGroups.find(x=>x.id===groupId);
+  if(g) g[field] = value;
+}
+function toggleChoiceGroupProduct(groupId, productId, checked){
+  const g = comboFormChoiceGroups.find(x=>x.id===groupId);
+  if(!g) return;
+  if(checked){ if(!g.productIds.includes(productId)) g.productIds.push(productId); }
+  else { g.productIds = g.productIds.filter(x=>x!==productId); }
+}
+function renderComboChoiceGroupsList(){
+  const wrap = document.getElementById("comboChoiceGroupsList");
+  if(!wrap) return;
+  wrap.innerHTML = comboFormChoiceGroups.length ? comboFormChoiceGroups.map(g=>`
+    <div class="card" style="padding:14px;margin-bottom:10px;background:var(--gray-50)">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input value="${escapeAttr(g.label)}" placeholder="Nome do grupo (ex.: Escolha o refrigerante)" style="flex:1;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px" oninput="updateChoiceGroupField('${g.id}','label',this.value)">
+        <button class="icon-btn danger" onclick="removeChoiceGroupUI('${g.id}')">🗑</button>
+      </div>
+      <div style="display:flex;gap:14px;margin-bottom:10px;font-size:12.5px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="cgtype-${g.id}" ${g.type==='single'?'checked':''} onchange="updateChoiceGroupField('${g.id}','type','single')"> Escolher 1 opção</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="cgtype-${g.id}" ${g.type==='multiple'?'checked':''} onchange="updateChoiceGroupField('${g.id}','type','multiple')"> Pode marcar várias</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" ${g.required?'checked':''} onchange="updateChoiceGroupField('${g.id}','required',this.checked)"> Obrigatório</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" ${g.chargeExtra?'checked':''} onchange="updateChoiceGroupField('${g.id}','chargeExtra',this.checked)"> Cobrar preço do item como adicional</label>
+      </div>
+      <div class="check-list" style="max-height:140px">
+        ${STATE.products.length ? STATE.products.map(p=>`
+          <label><input type="checkbox" value="${p.id}" ${(g.productIds||[]).includes(p.id)?'checked':''} onchange="toggleChoiceGroupProduct('${g.id}','${p.id}',this.checked)"> ${escapeHtml(p.name)} ${p.price?`<span style="color:var(--ink-soft);font-family:var(--font-mono)">(${money(p.price)})</span>`:''}</label>
+        `).join("") : `<span style="font-size:12.5px;color:var(--ink-soft)">Cadastre produtos primeiro.</span>`}
+      </div>
+    </div>
+  `).join("") : `<p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:8px">Nenhum grupo adicionado ainda.</p>`;
 }
 function submitComboForm(id, editing){
   const name = document.getElementById("cfName").value.trim();
@@ -984,8 +1050,11 @@ function submitComboForm(id, editing){
   const image = document.getElementById("cfImage").value.trim();
   const productIds = [...document.querySelectorAll(".cf-item-check:checked")].map(el=>el.value);
   if(!name || isNaN(price)){ showToast("Preencha nome e preço."); return; }
+  const choiceGroups = comboFormChoiceGroups
+    .filter(g=>g.label.trim() && g.productIds.length>0)
+    .map(g=>({id:g.id, label:g.label.trim(), type:g.type, required:!!g.required, chargeExtra:!!g.chargeExtra, productIds:g.productIds}));
   const existing = editing ? STATE.combos.find(x=>x.id===id) : null;
-  const combo = {id, name, description, price, image, productIds, active: existing ? existing.active : true};
+  const combo = {id, name, description, price, image, productIds, choiceGroups, active: existing ? existing.active : true};
   saveCombo(combo, ()=>{ closeScrim(); showToast(editing ? "Combo atualizado." : "Combo adicionado."); renderCombosAdmin(); });
 }
 

@@ -52,6 +52,10 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
+function buildMapsUrl(location){
+  if(!location || location.lat==null || location.lng==null) return null;
+  return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+}
 function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g,'&#96;'); }
 function showToast(msg){
@@ -98,10 +102,12 @@ function buildWhatsAppMessage(order){
   lines.push(`Telefone: ${order.phone}`);
   lines.push(`Endereço: ${order.address}`);
   if(order.bairro) lines.push(`Bairro: ${order.bairro}`);
+  if(order.location){ const mapsUrl = buildMapsUrl(order.location); if(mapsUrl) lines.push(`📍 Localização: ${mapsUrl}`); }
   lines.push("");
   lines.push("Itens:");
   order.items.forEach(it=>{
     let line = `• ${it.qty}x ${it.name}${it.isCombo ? " (combo)" : ""} — ${money(it.price*it.qty)}`;
+    if(it.choices && it.choices.length) line += `\n   ${it.choices.join(" | ")}`;
     if(it.note) line += `\n   Obs: ${it.note}`;
     lines.push(line);
   });
@@ -110,6 +116,9 @@ function buildWhatsAppMessage(order){
   lines.push(`Entrega: ${money(order.deliveryFee)}`);
   lines.push(`*Total: ${money(order.total)}*`);
   lines.push(`Pagamento: ${PAY_LABEL[order.payment]||order.payment}`);
+  if(order.payment==="dinheiro" && order.changeFor){
+    lines.push(`💵 Troco para ${money(order.changeFor)} — levar ${money(order.changeAmount)} de troco`);
+  }
   return lines.join("\n");
 }
 function buildWhatsAppUrl(order){
@@ -129,11 +138,7 @@ function normalizeBrazilPhone(raw){
 function buildCustomerStatusMessage(order, status){
   const store = STATE.config.storeName || "nossa loja";
   const lines = [];
-  if(status === "preparo"){
-    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} na ${store} está em preparo. 👨‍🍳`);
-  } else if(status === "saiu_entrega"){
-    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} saiu para entrega. 🛵 Já está a caminho até você!`);
-  } else if(status === "entregue"){
+  if(status === "entregue"){
     lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} foi entregue. 🎉`);
     lines.push(`Muito obrigado por comprar na ${store}! Esperamos que aproveite e volte sempre. 💜`);
   }
