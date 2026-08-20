@@ -757,7 +757,7 @@ function renderOrders(){
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
           <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
         </div>` : ""}
-        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Link do entregador</button></div>
+        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button></div>
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
@@ -800,11 +800,15 @@ function copyMapsLink(lat, lng){
   }
 }
 function copyDeliveryLink(orderId){
+  const order = STATE.orders.find(o=>o.id===orderId);
   const url = location.origin + location.pathname.replace(/admin\.html$/, "entrega.html") + "?id=" + orderId;
-  if(navigator.clipboard && navigator.clipboard.writeText){
+  const shareText = order ? `Entrega do pedido ${order.code} — ${order.customerName}` : "Link de entrega";
+  if(navigator.share){
+    navigator.share({title: "Link do entregador", text: shareText, url}).catch(()=>{ /* usuário cancelou o compartilhamento — sem problema */ });
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>showToast("Link do entregador copiado! Envie pelo WhatsApp.")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
   } else {
-    showToast("Seu navegador não permite copiar automaticamente.");
+    showToast("Seu navegador não permite compartilhar ou copiar automaticamente.");
   }
 }
 
