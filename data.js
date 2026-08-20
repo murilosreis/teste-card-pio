@@ -52,6 +52,37 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
+
+/* ---------- otimização de imagem no navegador (sem precisar de serviço externo) ---------- */
+function compressImageFile(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    if(!file || !file.type || file.type.indexOf("image/")!==0){ reject(new Error("Arquivo não é uma imagem.")); return; }
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error("Erro ao ler o arquivo."));
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error("Não consegui abrir essa imagem."));
+      img.onload = ()=>{
+        let width = img.width, height = img.height;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        let dataUrl = "";
+        try{ dataUrl = canvas.toDataURL("image/webp", quality); }catch(err){}
+        if(!dataUrl || dataUrl.indexOf("data:image/webp") !== 0){
+          dataUrl = canvas.toDataURL("image/jpeg", quality); // navegador sem suporte a WebP (ex.: Safari antigo)
+        }
+        resolve(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 function buildMapsUrl(location){
   if(!location || location.lat==null || location.lng==null) return null;
   return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
@@ -323,6 +354,15 @@ function createOrderData(order){
     STATE.orders.unshift(order);
     saveLocal();
     return Promise.resolve();
+  }
+}
+function deleteOrderData(id, onDone){
+  if(useFirebase){
+    db.collection("orders").doc(id).delete().then(()=>onDone&&onDone()).catch(()=>handleFirestoreDown());
+  } else {
+    STATE.orders = STATE.orders.filter(x=>x.id!==id);
+    saveLocal();
+    onDone && onDone();
   }
 }
 

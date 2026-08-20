@@ -354,45 +354,31 @@ canvas{max-width:100%;}
       <section id="tab-ajuda" class="hidden">
         <div class="admin-topbar"><h1>Como colocar foto nos produtos</h1></div>
         <div class="card panel">
-          <p class="help-intro">O cardápio mostra a foto que estiver salva no campo "URL da imagem" de cada produto ou combo. Como este site é hospedado de forma simples (sem servidor próprio de arquivos), a foto precisa estar hospedada em algum lugar da internet antes — e você só cola o link dela aqui no painel. Veja o passo a passo:</p>
+          <p class="help-intro">Existem duas formas de colocar foto num produto, combo ou promoção. A mais simples é enviar direto do seu celular ou computador — o próprio painel otimiza a imagem sozinho.</p>
           <div class="help-steps">
             <div class="help-step">
               <div class="hs-num">1</div>
               <div class="hs-body">
-                <h4>Separe a foto do produto</h4>
-                <p>Tire a foto ou escolha a imagem já pronta no celular/computador. Prefira fotos na horizontal, bem iluminadas, com o prato ou item centralizado — ficam melhores no cardápio.</p>
+                <h4>Forma recomendada: enviar direto do aparelho</h4>
+                <p>Ao editar um produto, combo ou promoção, use o campo <code>Ou envie uma foto do dispositivo</code>. Escolha a imagem — o painel redimensiona e comprime ela automaticamente (formato leve, sem perder qualidade visível) antes de salvar. Não precisa de nenhum site externo.</p>
               </div>
             </div>
             <div class="help-step">
               <div class="hs-num">2</div>
               <div class="hs-body">
-                <h4>Suba a foto para um site de hospedagem de imagem</h4>
-                <p>Acesse <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a> (gratuito, não precisa criar conta). Clique em <code>Start uploading</code>, escolha o arquivo da foto e aguarde o upload terminar.</p>
+                <h4>Alternativa: colar um link já pronto</h4>
+                <p>Se preferir usar uma imagem que já está hospedada em outro lugar, cole o endereço direto no campo <code>URL da imagem</code>. Um site gratuito pra isso é o <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a> — suba a foto lá, copie o <code>Direct link</code> (link direto da imagem, terminado em <code>.jpg</code> ou <code>.png</code>) e cole aqui.</p>
               </div>
             </div>
             <div class="help-step">
               <div class="hs-num">3</div>
               <div class="hs-body">
-                <h4>Copie o link direto da imagem</h4>
-                <p>Depois do upload, o ImgBB mostra vários links. Procure o campo <code>Direct link</code> (ou "Link direto") e copie o endereço — ele termina com <code>.jpg</code>, <code>.png</code> ou parecido. Não use o link da página, e sim esse link direto da imagem.</p>
-              </div>
-            </div>
-            <div class="help-step">
-              <div class="hs-num">4</div>
-              <div class="hs-body">
-                <h4>Volte para a aba Cardápio ou Combos deste painel</h4>
-                <p>Clique em <code>Cardápio</code> (ou <code>Combos</code>) no menu lateral. Para um item novo, clique em <code>+ Novo produto</code> ou <code>+ Novo combo</code>. Para um item que já existe, clique no ícone de lápis (✎) na linha dele.</p>
-              </div>
-            </div>
-            <div class="help-step">
-              <div class="hs-num">5</div>
-              <div class="hs-body">
-                <h4>Cole o link no campo "URL da imagem"</h4>
-                <p>Cole o link copiado do ImgBB nesse campo e clique em <code>Salvar alterações</code> (ou <code>Adicionar</code>). A foto já aparece no cardápio público na hora.</p>
+                <h4>Salvar</h4>
+                <p>Depois de preencher um dos dois campos, clique em <code>Salvar alterações</code> (ou <code>Adicionar</code>). A foto aparece no cardápio público na hora.</p>
               </div>
             </div>
           </div>
-          <div class="help-note">Em breve o painel vai ganhar um botão de envio direto de foto (sem precisar passar por outro site) — assim que estiver pronto, essa página é atualizada.</div>
+          <div class="help-note">Prefira fotos na horizontal, bem iluminadas, com o prato ou item centralizado — ficam melhores no cardápio.</div>
         </div>
       </section>
     </div>
@@ -774,6 +760,7 @@ function renderOrders(){
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
         <span class="oc-total">${money(o.total)}</span>
         <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">💬 Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
+        <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Excluir pedido">🗑</button>
         ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceOrderStatus('${o.id}','${nextStatus}')">${nextLabel}</button>` : ""}
         ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
       </div>
@@ -781,6 +768,25 @@ function renderOrders(){
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
+function handleImageFileSelect(inputEl, targetFieldId){
+  const file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById(targetFieldId + "Status");
+  if(statusEl) statusEl.textContent = "Otimizando imagem...";
+  compressImageFile(file, 900, 0.82).then(dataUrl=>{
+    const field = document.getElementById(targetFieldId);
+    if(field) field.value = dataUrl;
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+    if(statusEl) statusEl.textContent = `✅ Imagem otimizada (~${kb} KB) — pronta para salvar.`;
+  }).catch(err=>{
+    if(statusEl) statusEl.textContent = "";
+    showToast(err.message || "Não consegui processar essa imagem.");
+  });
+}
+function deleteOrder(id){
+  if(!confirm("Excluir este pedido definitivamente? Essa ação não pode ser desfeita.")) return;
+  deleteOrderData(id, renderOrders);
+}
 function copyMapsLink(lat, lng){
   const url = buildMapsUrl({lat, lng});
   if(!url) return;
@@ -926,6 +932,7 @@ function openProductForm(id){
           <select id="pfCategory">${STATE.config.categories.map(c=>`<option value="${escapeAttr(c)}" ${c===p.category?'selected':''}>${escapeHtml(c)}</option>`).join("")}</select>
         </div>
         <div class="field"><label>URL da imagem (opcional)</label><input id="pfImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
+        <div class="field"><label>Ou envie uma foto do dispositivo (otimizada automaticamente)</label><input type="file" accept="image/*" onchange="handleImageFileSelect(this,'pfImage')"><span id="pfImageStatus" style="font-size:12px;color:var(--ink-soft)"></span></div>
         <button class="btn btn-primary btn-block" onclick="submitProductForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar produto"}</button>
       </div>
     </div>`);
@@ -982,6 +989,7 @@ function openComboForm(id){
         <div class="field"><label>Descrição</label><textarea id="cfDesc">${escapeHtml(c.description)}</textarea></div>
         <div class="field"><label>Preço do combo (R$)</label><input id="cfPrice" type="number" step="0.01" min="0" value="${c.price}"></div>
         <div class="field"><label>URL da imagem (opcional)</label><input id="cfImage" value="${escapeAttr(c.image||"")}" placeholder="https://..."></div>
+        <div class="field"><label>Ou envie uma foto do dispositivo (otimizada automaticamente)</label><input type="file" accept="image/*" onchange="handleImageFileSelect(this,'cfImage')"><span id="cfImageStatus" style="font-size:12px;color:var(--ink-soft)"></span></div>
         <div class="field"><label>Produtos incluídos no combo (fixos)</label>
           <div class="check-list">
             ${STATE.products.length ? STATE.products.map(p=>`
@@ -1107,6 +1115,7 @@ function openPromotionForm(id){
         <div class="field"><label>Preço promocional (R$) — opcional, deixe em branco para manter o preço normal só em destaque</label><input id="pmPrice" type="number" step="0.01" min="0" value="${p.price ?? ''}"></div>
         <div class="field"><label>Data de término da promoção</label><input id="pmEndDate" type="date" value="${p.endDate||''}"></div>
         <div class="field"><label>Imagem (opcional — se vazio, usa a imagem do item)</label><input id="pmImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
+        <div class="field"><label>Ou envie uma foto do dispositivo (otimizada automaticamente)</label><input type="file" accept="image/*" onchange="handleImageFileSelect(this,'pmImage')"><span id="pmImageStatus" style="font-size:12px;color:var(--ink-soft)"></span></div>
         <button class="btn btn-primary btn-block" onclick="submitPromotionForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Criar promoção"}</button>
       </div>
     </div>`);
