@@ -132,7 +132,9 @@ function buildWhatsAppUrl(order){
 function normalizeBrazilPhone(raw){
   let digits = (raw||"").replace(/\D/g,"");
   if(!digits) return "";
-  if(digits.length <= 11) digits = "55" + digits; // assume DDI Brasil quando o cliente não digitou
+  if(digits.length===10 || digits.length===11){ digits = "55" + digits; }
+  else if(digits.length===12 || digits.length===13){ /* já parece incluir o DDI */ }
+  else { return ""; } // não tem cara de telefone brasileiro válido — não arrisca mandar pra número aleatório
   return digits;
 }
 function buildCustomerStatusMessage(order, status){
@@ -208,7 +210,7 @@ function seedDemoData(){
   ];
 }
 
-function initData(onReady){
+function initData(onReady, onOrdersUpdate){
   if(useFirebase){
     db.collection("config").doc("settings").get().then(doc=>{
       if(doc.exists) STATE.config = Object.assign(STATE.config, doc.data());
@@ -242,6 +244,7 @@ function initData(onReady){
 
     db.collection("orders").orderBy("createdAt","desc").onSnapshot(snap=>{
       STATE.orders = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onOrdersUpdate && onOrdersUpdate();
       onReady && onReady();
     }, ()=>handleFirestoreDown(onReady));
 
@@ -253,6 +256,7 @@ function initData(onReady){
   } else {
     loadLocal();
     typeof setSyncStatus === "function" && setSyncStatus(false);
+    onOrdersUpdate && onOrdersUpdate();
     onReady && onReady();
   }
 }

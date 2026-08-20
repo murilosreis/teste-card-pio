@@ -157,7 +157,7 @@
       <div class="store-status">
         <span class="pill"><span class="dot" id="storeStatusDot"></span><span id="storeStatusText">Loja aberta agora</span></span>
       </div>
-      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTrackingWithVerification(getMyMostRecentOrderId())">📦 Acompanhar pedido <span id="myOrderPillCode"></span> →</button>
+      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTrackingLookup()">📦 Acompanhar Pedido →</button>
     </div>
   </header>
 
@@ -459,9 +459,6 @@ function checkMyOrders(){
   const pill = document.getElementById("myOrderPill");
   const id = getMyMostRecentOrderId();
   if(!id || !pill){ if(pill) pill.classList.add("hidden"); return; }
-  let list = [];
-  try{ list = JSON.parse(localStorage.getItem("sd_my_orders") || "[]"); }catch(e){}
-  document.getElementById("myOrderPillCode").textContent = list[0] ? list[0].code : "";
   pill.classList.remove("hidden");
 }
 
@@ -477,33 +474,6 @@ function openTracking(orderId){
     const order = STATE.orders.find(o=>o.id===orderId);
     if(order) renderTrackingContent(order);
     else showToast("Pedido não encontrado neste navegador.");
-  }
-}
-function openTrackingWithVerification(orderId){
-  if(!orderId) return;
-  openScrim(`
-    <div class="sheet" onclick="event.stopPropagation()">
-      <div class="cart-head"><h3>Confirmar identidade</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
-      <div class="detail-body">
-        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px">Para proteger os dados do seu pedido, confirme o telefone usado nele.</p>
-        <div class="field"><label>Telefone usado no pedido</label><input id="verifyPhone" placeholder="(00) 00000-0000" onkeydown="if(event.key==='Enter')confirmTrackingAccess('${orderId}')"></div>
-        <button class="btn btn-primary btn-block" onclick="confirmTrackingAccess('${orderId}')">Ver meu pedido</button>
-      </div>
-    </div>`);
-}
-function confirmTrackingAccess(orderId){
-  const phone = document.getElementById("verifyPhone").value.trim().replace(/\D/g,"");
-  if(!phone){ showToast("Digite o telefone."); return; }
-  if(useFirebase){
-    db.collection("orders").doc(orderId).get().then(doc=>{
-      if(!doc.exists){ showToast("Pedido não encontrado."); return; }
-      if((doc.data().phone||"").replace(/\D/g,"") === phone){ openTracking(orderId); }
-      else { showToast("Telefone não confere com o pedido."); }
-    }).catch(()=>showToast("Erro ao verificar o pedido."));
-  } else {
-    const order = STATE.orders.find(o=>o.id===orderId);
-    if(order && (order.phone||"").replace(/\D/g,"") === phone){ openTracking(orderId); }
-    else { showToast("Telefone não confere com o pedido."); }
   }
 }
 function renderTrackingContent(order){
@@ -577,27 +547,32 @@ function openTrackingLookup(){
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>Acompanhar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
       <div class="detail-body">
-        <div class="field"><label>Código do pedido</label><input id="lookupCode" placeholder="Ex.: #0007"></div>
-        <div class="field"><label>Telefone usado no pedido</label><input id="lookupPhone" placeholder="(00) 00000-0000"></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:14px">Digite o telefone usado no pedido para acompanhar.</p>
+        <div class="field"><label>Telefone</label><input id="lookupPhone" placeholder="(00) 00000-0000" onkeydown="if(event.key==='Enter')submitTrackingLookup()"></div>
         <button class="btn btn-primary btn-block" onclick="submitTrackingLookup()">Buscar pedido</button>
+        <div id="lookupError" class="hidden" style="margin-top:14px;font-size:13px;color:var(--red);text-align:center">Nenhum pedido ativo encontrado para esse telefone.</div>
       </div>
     </div>`);
 }
+function isOrderActive(o){ return o.status !== "entregue" && o.status !== "cancelado"; }
 function submitTrackingLookup(){
-  const rawCode = document.getElementById("lookupCode").value.trim();
   const phone = document.getElementById("lookupPhone").value.trim().replace(/\D/g,"");
-  if(!rawCode || !phone){ showToast("Preencha o código e o telefone."); return; }
-  const code = rawCode.startsWith("#") ? rawCode : "#"+rawCode;
+  const errEl = document.getElementById("lookupError");
+  if(errEl) errEl.classList.add("hidden");
+  if(!phone){ showToast("Digite o telefone."); return; }
   if(useFirebase){
-    db.collection("orders").where("code","==",code).limit(5).get().then(snap=>{
-      const match = snap.docs.find(d=>(d.data().phone||"").replace(/\D/g,"")===phone);
-      if(match){ saveMyOrder({id:match.id, code}); checkMyOrders(); openTracking(match.id); }
-      else { showToast("Pedido não encontrado. Confira o código e o telefone."); }
+    db.collection("orders").orderBy("createdAt","desc").limit(100).get().then(snap=>{
+      const match = snap.docs.find(d=>{
+        const data = d.data();
+        return (data.phone||"").replace(/\D/g,"")===phone && isOrderActive(data);
+      });
+      if(match){ saveMyOrder({id:match.id, code:match.data().code}); checkMyOrders(); openTracking(match.id); }
+      else if(errEl){ errEl.classList.remove("hidden"); }
     }).catch(()=>showToast("Erro ao buscar o pedido."));
   } else {
-    const match = STATE.orders.find(o=>o.code===code && (o.phone||"").replace(/\D/g,"")===phone);
-    if(match){ saveMyOrder(match); checkMyOrders(); openTracking(match.id); }
-    else showToast("Pedido não encontrado. Confira o código e o telefone.");
+    const matches = STATE.orders.filter(o=>(o.phone||"").replace(/\D/g,"")===phone && isOrderActive(o)).sort((a,b)=>b.createdAt-a.createdAt);
+    if(matches.length){ saveMyOrder(matches[0]); checkMyOrders(); openTracking(matches[0].id); }
+    else if(errEl){ errEl.classList.remove("hidden"); }
   }
 }
 
@@ -781,6 +756,8 @@ function submitOrder(){
   const phone = document.getElementById("chkPhone").value.trim();
   const address = document.getElementById("chkAddress").value.trim();
   if(!name || !phone || !address){ showToast("Preencha nome, telefone e endereço."); return; }
+  const phoneDigitsCheck = phone.replace(/\D/g,"");
+  if(phoneDigitsCheck.length < 10 || phoneDigitsCheck.length > 13){ showToast("Digite um telefone válido, com DDD."); return; }
   const fees = STATE.config.deliveryFees || [];
   let fee = STATE.config.deliveryFee || 0;
   let bairroLabel = "";

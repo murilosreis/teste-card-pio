@@ -475,7 +475,6 @@ function renderAdmin(){
   if(document.getElementById("adminShell").classList.contains("hidden")) return;
   setSyncStatus(useFirebase && !firestoreUnavailable);
   document.getElementById("storeNameLabelAdmin").textContent = STATE.config.storeName;
-  checkForNewOrders();
   if(adminTab==="overview") renderOverview();
   if(adminTab==="orders") renderOrders();
   if(adminTab==="menu") renderMenuAdmin();
@@ -1292,7 +1291,7 @@ function closeScrim(){
 /* =====================================================================
    INIT
 ===================================================================== */
-initData(renderAdmin);
+initData(renderAdmin, checkForNewOrders);
 if(sessionStorage.getItem("sd_admin_logged") === "1"){
   loggedUserName = sessionStorage.getItem("sd_admin_name") || "Administrador";
   showAdminShell();
