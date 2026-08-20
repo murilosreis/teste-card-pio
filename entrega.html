@@ -26,6 +26,9 @@
 .courier-address{font-size:14.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;}
 .courier-items{font-size:13.5px;color:var(--ink-soft);background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-top:14px;line-height:1.6;}
 .courier-status-msg{margin-top:14px;font-size:12.5px;color:var(--teal);font-weight:600;text-align:center;min-height:18px;}
+.courier-ack{margin-top:14px;padding:10px 14px;border-radius:10px;font-size:12.5px;text-align:center;font-weight:600;}
+.courier-ack.pending{background:var(--amber-100);color:#9A6A0E;}
+.courier-ack.seen{background:var(--teal-100);color:var(--teal);}
 .empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
 </style>
 </head>
@@ -53,6 +56,7 @@
 <script>
 const params = new URLSearchParams(location.search);
 const orderId = params.get("id");
+let lastActionMsg = "";
 
 function renderCourierPage(){
   const nameLabel = document.getElementById("storeNameLabel");
@@ -82,8 +86,16 @@ function renderCourierPage(){
     ? `<div class="troco-highlight" style="margin-top:12px">💵 Troco para ${money(order.changeFor)} — levar <b>${money(order.changeAmount)}</b> de troco</div>`
     : "";
 
-  const draft = document.getElementById("courierAlertStatus");
-  const draftText = draft ? draft.textContent : "";
+  let ackHtml = "";
+  if(order.courierAlert){
+    const seen = order.courierAlertAck && order.courierAlertAck.ts === order.courierAlert.ts;
+    if(seen){
+      const seenTime = new Date(order.courierAlertAck.seenAt).toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
+      ackHtml = `<div class="courier-ack seen">✅ O cliente visualizou o aviso às ${seenTime}</div>`;
+    } else {
+      ackHtml = `<div class="courier-ack pending">📨 Aviso enviado — aguardando o cliente visualizar...</div>`;
+    }
+  }
 
   content.innerHTML = `
     <div class="card courier-card">
@@ -97,7 +109,9 @@ function renderCourierPage(){
         : `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:16px">O cliente não compartilhou localização exata — use o endereço acima.</p>`}
       <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="sendCourierAlert('chegando')">🛵 Avisar que estou chegando</button>
       <button class="btn btn-gold btn-block" style="margin-top:10px" onclick="sendCourierAlert('chegou')">🚪 Cheguei na porta</button>
-      <div class="courier-status-msg" id="courierAlertStatus">${draftText}</div>
+      <p style="font-size:11.5px;color:var(--gray-300);margin-top:8px;text-align:center">Cada botão abre o WhatsApp do cliente com a mensagem pronta — é só apertar enviar.</p>
+      <div class="courier-status-msg" id="courierAlertStatus">${lastActionMsg}</div>
+      ${ackHtml}
     </div>`;
 }
 
@@ -109,14 +123,23 @@ function sendCourierAlert(type){
     renderCourierPage();
     return;
   }
+  // abre a aba do WhatsApp em branco AGORA, ainda dentro do clique, para não ser bloqueada
+  const waUrl = buildCourierAlertWhatsAppUrl(order, type);
+  const waWindow = waUrl ? window.open("", "_blank") : null;
   const payload = {type, ts: Date.now()};
   const statusEl = document.getElementById("courierAlertStatus");
+  const finishUp = (viaApp) => {
+    if(waWindow && waUrl){ waWindow.location.href = waUrl; }
+    else if(waWindow){ waWindow.close(); }
+    lastActionMsg = waUrl
+      ? (viaApp ? "✅ Cliente avisado pelo app e pelo WhatsApp." : "✅ WhatsApp aberto para avisar o cliente.")
+      : "⚠️ Não foi possível montar o link do WhatsApp — telefone inválido.";
+    if(statusEl) statusEl.textContent = lastActionMsg;
+  };
   if(useFirebase){
-    db.collection("orders").doc(orderId).update({courierAlert: payload}).then(()=>{
-      if(statusEl) statusEl.textContent = type==="chegou" ? "✅ Cliente avisado que você chegou." : "✅ Cliente avisado que você está chegando.";
-    }).catch(()=>showToast("Não consegui enviar o aviso. Tente de novo."));
+    db.collection("orders").doc(orderId).update({courierAlert: payload}).then(()=>finishUp(true)).catch(()=>finishUp(false));
   } else {
-    showToast("Sem conexão em tempo real — o cliente não vai receber esse aviso agora.");
+    finishUp(false);
   }
 }
 

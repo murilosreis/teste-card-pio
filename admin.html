@@ -125,6 +125,23 @@
   .admin-main{padding:20px 16px 60px;}
 }
 canvas{max-width:100%;}
+
+/* impressão de tickets — invisível na tela, só aparece ao mandar imprimir */
+#printArea{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{display:block;position:absolute;top:0;left:0;width:100%;}
+  .ticket{font-family:'JetBrains Mono',monospace;font-size:12px;padding:16px;width:300px;margin:0 auto;color:#000;}
+  .ticket-via{font-weight:700;text-align:center;border:1.5px solid #000;padding:5px;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;}
+  .ticket-store{font-weight:700;text-align:center;font-size:14px;}
+  .ticket-code{text-align:center;font-size:17px;font-weight:700;margin:6px 0;}
+  .ticket-line{margin:2px 0;}
+  .ticket-item{margin-top:6px;font-weight:700;}
+  .ticket-sub{margin-left:12px;font-size:11px;}
+  .ticket-sep{border-top:1px dashed #000;margin:10px 0;}
+  .ticket-pagebreak{page-break-after:always;}
+}
 </style>
 </head>
 <body>
@@ -328,6 +345,13 @@ canvas{max-width:100%;}
               </select>
             </div>
             <button class="btn btn-primary" onclick="saveSettings()">Salvar alterações</button>
+            <h3 style="margin-top:26px;margin-bottom:10px">Vias de impressão por pedido</h3>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">Sempre que um pedido for aceito, o sistema abre a impressão com uma via para cada nome cadastrado aqui — ex.: Cozinha, Entregador, Controle Interno.</p>
+            <div class="cat-manage-list" id="printCopiesList"></div>
+            <div style="display:flex;gap:8px">
+              <input id="newPrintCopyInput" placeholder="Nome da via (ex.: Cozinha)" style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:9px">
+              <button class="btn btn-ghost btn-sm" onclick="addPrintCopy()">Adicionar</button>
+            </div>
           </div>
           <div class="card panel">
             <h3>Segurança</h3>
@@ -388,6 +412,7 @@ canvas{max-width:100%;}
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="printArea"></div>
 
 <script src="data.js"></script>
 <script>
@@ -521,6 +546,7 @@ function checkForNewOrders(){
   if(freshIds.length === 0) return;
   const freshOrders = STATE.orders.filter(o=>freshIds.includes(o.id));
   freshOrders.forEach(o=>alertedOrderIds.add(o.id));
+  freshOrders.filter(o=>o.status==="preparo").forEach(o=>printOrderTickets(o));
   playAlertSound();
   startAlertRepeat();
   const dot = document.getElementById("ordersAlertDot");
@@ -719,6 +745,51 @@ function drawReportChart(labels, values){
   });
 }
 
+/* ---------- impressão de tickets ---------- */
+function buildTicketHtml(order, viaLabel, store){
+  const d = new Date(order.createdAt);
+  const time = String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+d.toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
+  const itemsHtml = order.items.map(it=>{
+    let extra = "";
+    if(it.choices && it.choices.length) extra += it.choices.map(c=>`<div class="ticket-sub">- ${escapeHtml(c)}</div>`).join("");
+    if(it.note) extra += `<div class="ticket-sub">Obs: ${escapeHtml(it.note)}</div>`;
+    return `<div class="ticket-item">${it.qty}x ${escapeHtml(it.name)}</div>${extra}`;
+  }).join("");
+  const trocoLine = (order.payment==="dinheiro" && order.changeFor)
+    ? `<div class="ticket-line">Troco p/ ${money(order.changeFor)} (levar ${money(order.changeAmount)})</div>` : "";
+  return `
+    <div class="ticket">
+      <div class="ticket-via">Via: ${escapeHtml(viaLabel)}</div>
+      <div class="ticket-store">${escapeHtml(store)}</div>
+      <div class="ticket-code">${order.code}</div>
+      <div class="ticket-line">${time}</div>
+      <div class="ticket-sep"></div>
+      <div class="ticket-line"><b>${escapeHtml(order.customerName)}</b></div>
+      <div class="ticket-line">${escapeHtml(order.phone)}</div>
+      <div class="ticket-line">${escapeHtml(order.address)}${order.bairro?" - "+escapeHtml(order.bairro):""}</div>
+      <div class="ticket-sep"></div>
+      ${itemsHtml}
+      <div class="ticket-sep"></div>
+      <div class="ticket-line">Subtotal: ${money(order.subtotal)}</div>
+      <div class="ticket-line">Entrega: ${money(order.deliveryFee)}</div>
+      <div class="ticket-line"><b>Total: ${money(order.total)}</b></div>
+      <div class="ticket-line">Pagamento: ${PAY_LABEL[order.payment]||order.payment}</div>
+      ${trocoLine}
+    </div>`;
+}
+function printOrderTickets(order){
+  const area = document.getElementById("printArea");
+  if(!area || !order) return;
+  const vias = (STATE.config.printCopies && STATE.config.printCopies.length) ? STATE.config.printCopies : ["Via única"];
+  const store = STATE.config.storeName || "Loja";
+  area.innerHTML = vias.map(v=>buildTicketHtml(order, v, store)).join('<div class="ticket-pagebreak"></div>');
+  setTimeout(()=>{ window.print(); }, 150);
+}
+function printOrderById(orderId){
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(order) printOrderTickets(order);
+}
+
 function renderOrders(){
   renderNewOrderBanner();
   const counts = {todos: STATE.orders.length};
@@ -757,7 +828,10 @@ function renderOrders(){
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
           <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
         </div>` : ""}
-        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button></div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button>
+          <button class="btn btn-ghost btn-sm" onclick="printOrderById('${o.id}')">🖨️ Imprimir</button>
+        </div>
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
@@ -894,6 +968,9 @@ function confirmCancelOrder(orderId){
 }
 function advanceOrderStatus(orderId, status){
   const order = STATE.orders.find(o=>o.id===orderId);
+  if(order && status === "preparo"){
+    printOrderTickets(order);
+  }
   if(order && status === "entregue"){
     const serverUrl = (STATE.config.waServerUrl||"").trim();
     const message = buildCustomerStatusMessage(order, status);
@@ -1233,7 +1310,29 @@ function renderSettings(){
   document.getElementById("cfgWaServerUrl").value = STATE.config.waServerUrl || "";
   document.getElementById("cfgWaServerKey").value = STATE.config.waServerKey || "";
   renderFeeManageList();
+  renderPrintCopiesList();
   refreshWaServerStatus();
+}
+function renderPrintCopiesList(){
+  const copies = STATE.config.printCopies || [];
+  document.getElementById("printCopiesList").innerHTML = copies.map((v,i)=>
+    `<div class="cat-manage-item">${escapeHtml(v)}<button onclick="removePrintCopy(${i})">✕</button></div>`
+  ).join("") || `<span style="font-size:13px;color:var(--ink-soft)">Nenhuma via cadastrada — será impressa 1 via única.</span>`;
+}
+function addPrintCopy(){
+  const input = document.getElementById("newPrintCopyInput");
+  const val = input.value.trim();
+  if(!val) return;
+  STATE.config.printCopies = STATE.config.printCopies || [];
+  STATE.config.printCopies.push(val);
+  saveConfig();
+  input.value = "";
+  renderPrintCopiesList();
+}
+function removePrintCopy(i){
+  STATE.config.printCopies.splice(i,1);
+  saveConfig();
+  renderPrintCopiesList();
 }
 function saveWaServerConfig(){
   STATE.config.waServerUrl = document.getElementById("cfgWaServerUrl").value.trim();

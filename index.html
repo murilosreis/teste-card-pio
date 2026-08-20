@@ -460,7 +460,7 @@ function playCourierAlertSound(){
     });
   }catch(e){ /* navegador pode bloquear áudio sem interação prévia — o alerta visual continua */ }
 }
-function showCourierAlertOverlay(type){
+function showCourierAlertOverlay(type, orderId, alertTs){
   playCourierAlertSound();
   const isHere = type === "chegou";
   const div = document.createElement("div");
@@ -469,9 +469,18 @@ function showCourierAlertOverlay(type){
     <div class="courier-alert-box">
       <div class="courier-alert-icon">${isHere ? "🚪" : "🛵"}</div>
       <div class="courier-alert-text">${isHere ? "O entregador já está na porta!" : "O entregador está chegando!"}</div>
-      <button class="btn btn-gold btn-block" onclick="this.closest('.courier-alert-overlay').remove()">OK, entendi</button>
+      <button class="btn btn-gold btn-block" onclick="acknowledgeCourierAlert('${orderId}', ${alertTs}); this.closest('.courier-alert-overlay').remove();">OK, entendi</button>
     </div>`;
   document.body.appendChild(div);
+}
+function acknowledgeCourierAlert(orderId, alertTs){
+  const payload = {ts: alertTs, seenAt: Date.now()};
+  if(useFirebase){
+    db.collection("orders").doc(orderId).update({courierAlertAck: payload}).catch(()=>{});
+  } else {
+    const order = STATE.orders.find(o=>o.id===orderId);
+    if(order){ order.courierAlertAck = payload; saveLocal(); }
+  }
 }
 function openScrim(innerHtml){
   closeScrim();
@@ -536,7 +545,7 @@ function renderTrackingContent(order){
     courierAlertBaseline = alertTs;
   } else if(alertTs && alertTs !== courierAlertBaseline){
     courierAlertBaseline = alertTs;
-    showCourierAlertOverlay(order.courierAlert.type);
+    showCourierAlertOverlay(order.courierAlert.type, order.id, alertTs);
   }
   const isCancelled = order.status === "cancelado";
   const isPending = order.status === "pendente";

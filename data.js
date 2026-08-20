@@ -34,7 +34,8 @@ let STATE = {
     whatsappNumber:"",
     autoAcceptOrders:true,
     waServerUrl:"",
-    waServerKey:""
+    waServerKey:"",
+    printCopies:["Cozinha","Entregador","Controle Interno"]
   },
   products: [],
   combos: [],
@@ -244,6 +245,20 @@ function buildCustomerStatusWhatsAppUrl(order, status){
   return `https://wa.me/${digits}?text=${text}`;
 }
 
+/* ---------- aviso de chegada do entregador (WhatsApp direto pro cliente) ---------- */
+function buildCourierAlertMessage(order, type){
+  if(type === "chegou"){
+    return "Olá, " + order.customerName + "! O entregador do seu pedido " + order.code + " já está na porta.";
+  }
+  return "Olá, " + order.customerName + "! O entregador do seu pedido " + order.code + " está chegando.";
+}
+function buildCourierAlertWhatsAppUrl(order, type){
+  const digits = normalizeBrazilPhone(order.phone);
+  if(!digits) return null;
+  const text = encodeURIComponent(buildCourierAlertMessage(order, type));
+  return `https://wa.me/${digits}?text=${text}`;
+}
+
 /* ---------- envio automático via servidor próprio (opcional) ---------- */
 function sendViaWhatsAppServer(phone, message){
   const url = (STATE.config.waServerUrl||"").trim();
@@ -281,7 +296,7 @@ function loadLocal(){
     if(raw){
       const parsed = JSON.parse(raw);
       STATE = Object.assign({combos:[], promotions:[], users:[], orderCounter:0}, parsed);
-      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[]}, STATE.config);
+      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[], printCopies:["Cozinha","Entregador","Controle Interno"]}, STATE.config);
     }
     else { seedDemoData(); saveLocal(); }
   }catch(e){ seedDemoData(); }
