@@ -130,3 +130,11 @@ img{max-width:100%;display:block;}
 .chat-msg.from-store .chat-bubble{background:var(--white);color:var(--ink);border-bottom-left-radius:4px;box-shadow:var(--shadow-sm);}
 .chat-input-row{display:flex;gap:8px;margin-top:10px;}
 .chat-input-row input{flex:1;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:10px;}
+
+/* documentos legais (termos de uso, privacidade) — usado no cardápio e no painel */
+.legal-doc-body{padding:22px;font-size:13.5px;color:var(--ink-soft);line-height:1.65;}
+.legal-doc-body h4{color:var(--ink);font-size:14.5px;margin:18px 0 6px;}
+.legal-doc-body h4:first-child{margin-top:0;}
+.legal-doc-body p{margin-bottom:8px;}
+.legal-doc-body ul{margin:6px 0 10px 18px;}
+.legal-doc-body li{margin-bottom:4px;}

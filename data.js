@@ -53,6 +53,66 @@ function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
 
+/* ---------- termos legais (LGPD) — usado no cardápio e no painel ---------- */
+function openLegalDoc(kind){
+  const store = STATE.config.storeName || "esta loja";
+  const wa = (STATE.config.whatsappNumber||"").trim();
+  const contactLine = wa ? "pelo WhatsApp cadastrado nesta loja" : "pelos canais de contato desta loja";
+  const title = kind === "terms" ? "Termos de Uso" : "Política de Privacidade";
+  let body = "";
+  if(kind === "terms"){
+    body = `
+      <h4>1. Sobre este serviço</h4>
+      <p>Este é o cardápio digital da ${escapeHtml(store)}, usado para consulta de produtos e envio de pedidos. A ${escapeHtml(store)} é a responsável pela produção, preço, qualidade e entrega dos itens pedidos.</p>
+      <h4>2. Como funciona o pedido</h4>
+      <p>Ao finalizar um pedido, os dados informados (nome, telefone, endereço e, se autorizado, localização) são enviados à loja para preparo e entrega. A confirmação do pedido acontece por mensagem, e o pagamento é feito diretamente com a loja ou o entregador, na forma escolhida (Pix, cartão ou dinheiro) — este site não processa nem armazena dados de pagamento.</p>
+      <h4>3. Responsabilidades do cliente</h4>
+      <ul>
+        <li>Informar nome, telefone e endereço corretos e atualizados;</li>
+        <li>Estar disponível para receber o pedido no endereço e horário combinados;</li>
+        <li>Conferir os itens e valores antes de confirmar o pedido.</li>
+      </ul>
+      <h4>4. Cancelamentos e trocas</h4>
+      <p>Cancelamentos, trocas ou reembolsos devem ser tratados diretamente com a ${escapeHtml(store)} ${contactLine}, e seguem o Código de Defesa do Consumidor (Lei nº 8.078/1990).</p>
+      <h4>5. Limitação de responsabilidade</h4>
+      <p>Este cardápio é uma ferramenta de pedidos. Prazos de entrega, disponibilidade de itens e comunicação por WhatsApp podem sofrer variações fora do controle da plataforma (trânsito, demanda, instabilidade de rede, etc.). Em caso de problema com o pedido, o contato deve ser feito diretamente com a loja.</p>
+      <h4>6. Alterações</h4>
+      <p>Estes termos podem ser atualizados a qualquer momento, sem aviso prévio individual. A versão vigente é sempre a publicada nesta página.</p>
+      <h4>7. Legislação aplicável</h4>
+      <p>Este serviço é regido pelas leis brasileiras, incluindo o Código de Defesa do Consumidor e a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p>
+    `;
+  } else {
+    body = `
+      <h4>1. Quem trata seus dados</h4>
+      <p>A ${escapeHtml(store)} é a controladora dos dados coletados neste cardápio, nos termos da Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
+      <h4>2. Quais dados coletamos</h4>
+      <ul>
+        <li>Nome e telefone, informados no pedido;</li>
+        <li>Endereço de entrega e, opcionalmente, localização geográfica (somente se você autorizar o acesso pelo navegador);</li>
+        <li>Itens do pedido, forma de pagamento escolhida e, se houver, mensagens trocadas sobre o pedido;</li>
+        <li>Um identificador salvo no seu navegador (armazenamento local) para você conseguir acompanhar seu próprio pedido depois.</li>
+      </ul>
+      <h4>3. Para que usamos esses dados</h4>
+      <p>Exclusivamente para processar, preparar, entregar e acompanhar o seu pedido, e para contato sobre ele (confirmação, status e dúvidas). Não usamos seus dados para publicidade nem os vendemos a terceiros.</p>
+      <h4>4. Com quem compartilhamos</h4>
+      <p>Os dados ficam visíveis para a equipe da ${escapeHtml(store)} responsável pelo preparo e entrega, e são armazenados em serviços de nuvem (Firebase/Google Cloud) usados para operar este cardápio.</p>
+      <h4>5. Localização</h4>
+      <p>O compartilhamento de localização é sempre opcional e depende da sua autorização explícita no navegador. Ela é usada apenas para facilitar a entrega e pode ser recusada sem impedir o pedido.</p>
+      <h4>6. Seus direitos (LGPD)</h4>
+      <p>Você pode solicitar, a qualquer momento, acesso, correção ou exclusão dos seus dados, ou retirar um consentimento dado — basta entrar em contato ${contactLine}.</p>
+      <h4>7. Segurança e retenção</h4>
+      <p>Adotamos medidas razoáveis de segurança para proteger seus dados, mas nenhum sistema é 100% livre de risco. Os dados são mantidos pelo tempo necessário para cumprir a finalidade do pedido e obrigações legais.</p>
+      <h4>8. Alterações</h4>
+      <p>Esta política pode ser atualizada a qualquer momento. A versão vigente é sempre a publicada nesta página.</p>
+    `;
+  }
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${title}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="legal-doc-body">${body}</div>
+    </div>`);
+}
+
 /* ---------- otimização de imagem no navegador (sem precisar de serviço externo) ---------- */
 function compressImageFile(file, maxDim, quality){
   return new Promise((resolve, reject)=>{
@@ -172,8 +232,8 @@ function buildCustomerStatusMessage(order, status){
   const store = STATE.config.storeName || "nossa loja";
   const lines = [];
   if(status === "entregue"){
-    lines.push(`Olá, ${order.customerName}! Seu pedido ${order.code} foi entregue. 🎉`);
-    lines.push(`Muito obrigado por comprar na ${store}! Esperamos que aproveite e volte sempre. 💜`);
+    lines.push("Olá, " + order.customerName + "! Seu pedido " + order.code + " foi entregue.");
+    lines.push("Muito obrigado por comprar na " + store + "! Esperamos que aproveite e volte sempre.");
   }
   return lines.join("\n");
 }

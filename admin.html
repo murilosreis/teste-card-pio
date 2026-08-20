@@ -169,6 +169,8 @@ canvas{max-width:100%;}
       <button class="nav-item" data-tab="ajuda" onclick="setAdminTab('ajuda')"><span class="badge-diamond"></span>Ajuda</button>
       <div class="sidebar-foot">
         <a href="index.html" target="_blank">↗ Ver cardápio público</a>
+        <a href="#" onclick="openLegalDoc('terms');return false;">Termos de Uso</a>
+        <a href="#" onclick="openLegalDoc('privacy');return false;">Política de Privacidade</a>
         <button onclick="adminLogout()">⏻ Sair</button>
       </div>
     </aside>
@@ -755,6 +757,7 @@ function renderOrders(){
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
           <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
         </div>` : ""}
+        <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Link do entregador</button></div>
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
@@ -792,6 +795,14 @@ function copyMapsLink(lat, lng){
   if(!url) return;
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(url).then(()=>showToast("Link do mapa copiado!")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
+  } else {
+    showToast("Seu navegador não permite copiar automaticamente.");
+  }
+}
+function copyDeliveryLink(orderId){
+  const url = location.origin + location.pathname.replace(/admin\.html$/, "entrega.html") + "?id=" + orderId;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>showToast("Link do entregador copiado! Envie pelo WhatsApp.")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
   } else {
     showToast("Seu navegador não permite copiar automaticamente.");
   }

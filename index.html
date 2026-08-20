@@ -132,9 +132,23 @@
 .my-order-pill:hover{background:rgba(255,255,255,.22);}
 .track-lookup-link{font-size:12.5px;color:var(--gray-300);margin-top:8px;display:block;}
 .track-lookup-link:hover{color:var(--purple-700);}
+.legal-links{margin-top:10px;font-size:11.5px;color:var(--gray-300);}
+.legal-links a{color:var(--gray-300);}
+.legal-links a:hover{color:var(--purple-700);}
+.legal-links span{margin:0 6px;}
+.consent-row{display:flex;align-items:flex-start;gap:10px;margin:4px 0 16px;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.consent-row input{margin-top:3px;flex-shrink:0;}
+.consent-row a{color:var(--purple-700);font-weight:600;text-decoration:underline;}
 .tracking-body{padding:22px;}
 .tracking-items{font-size:13px;color:var(--ink-soft);background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-top:14px;line-height:1.6;}
 .tracking-total{font-family:var(--font-mono);font-weight:700;margin-top:10px;text-align:right;}
+
+/* alerta de chegada do entregador */
+.courier-alert-overlay{position:fixed;inset:0;background:rgba(42,15,78,.94);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeInOverlay .2s ease;}
+@keyframes fadeInOverlay{from{opacity:0}to{opacity:1}}
+.courier-alert-box{background:var(--white);border-radius:20px;padding:38px 28px;text-align:center;max-width:340px;box-shadow:var(--shadow-lg);}
+.courier-alert-icon{font-size:52px;margin-bottom:14px;line-height:1;}
+.courier-alert-text{font-family:var(--font-display);font-size:19px;font-weight:700;margin-bottom:22px;color:var(--ink);}
 </style>
 </head>
 <body>
@@ -183,6 +197,11 @@
 
   <footer class="menu-footer">
     <a href="#" class="track-lookup-link" onclick="openTrackingLookup();return false;">Já fez um pedido? Acompanhar pelo código</a>
+    <div class="legal-links">
+      <a href="#" onclick="openLegalDoc('terms');return false;">Termos de Uso</a>
+      <span>·</span>
+      <a href="#" onclick="openLegalDoc('privacy');return false;">Política de Privacidade</a>
+    </div>
   </footer>
 
   <div class="floating-cart hidden" id="floatingCart" onclick="openCart()">
@@ -422,6 +441,37 @@ function confirmAddDetail(){
 
 /* ---------- scrim helper ---------- */
 let trackingUnsub = null;
+let courierAlertBaseline;
+function playCourierAlertSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0,1,2].forEach(i=>{
+      const t = ctx.currentTime + i*0.3;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 1046.5;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.4, t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+0.25);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t+0.27);
+    });
+  }catch(e){ /* navegador pode bloquear áudio sem interação prévia — o alerta visual continua */ }
+}
+function showCourierAlertOverlay(type){
+  playCourierAlertSound();
+  const isHere = type === "chegou";
+  const div = document.createElement("div");
+  div.className = "courier-alert-overlay";
+  div.innerHTML = `
+    <div class="courier-alert-box">
+      <div class="courier-alert-icon">${isHere ? "🚪" : "🛵"}</div>
+      <div class="courier-alert-text">${isHere ? "O entregador já está na porta!" : "O entregador está chegando!"}</div>
+      <button class="btn btn-gold btn-block" onclick="this.closest('.courier-alert-overlay').remove()">OK, entendi</button>
+    </div>`;
+  document.body.appendChild(div);
+}
 function openScrim(innerHtml){
   closeScrim();
   const div = document.createElement("div");
@@ -464,6 +514,7 @@ function checkMyOrders(){
 
 function openTracking(orderId){
   if(!orderId) return;
+  courierAlertBaseline = undefined;
   openScrim(`<div class="sheet tracking-sheet" onclick="event.stopPropagation()" id="trackingSheetInner"><div class="tracking-body" style="text-align:center;color:var(--ink-soft)">Carregando pedido...</div></div>`);
   if(useFirebase){
     trackingUnsub = db.collection("orders").doc(orderId).onSnapshot(doc=>{
@@ -479,6 +530,13 @@ function openTracking(orderId){
 function renderTrackingContent(order){
   const wrap = document.getElementById("trackingSheetInner");
   if(!wrap) return;
+  const alertTs = order.courierAlert ? order.courierAlert.ts : null;
+  if(courierAlertBaseline === undefined){
+    courierAlertBaseline = alertTs;
+  } else if(alertTs && alertTs !== courierAlertBaseline){
+    courierAlertBaseline = alertTs;
+    showCourierAlertOverlay(order.courierAlert.type);
+  }
   const isCancelled = order.status === "cancelado";
   const isPending = order.status === "pendente";
   const currentIdx = STATUS_FLOW.indexOf(order.status);
@@ -542,6 +600,7 @@ function sendTrackingMessage(orderId){
   }
 }
 
+/* ---------- termos legais (LGPD) ---------- */
 function openTrackingLookup(){
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
@@ -692,14 +751,15 @@ function openCheckout(){
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>Finalizar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <form id="checkoutForm" onsubmit="event.preventDefault(); submitOrder();">
       <div class="checkout-body">
-        <div class="field"><label>Seu nome</label><input id="chkName" placeholder="Como podemos te chamar?"></div>
-        <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" placeholder="(00) 00000-0000"></div>
-        <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" placeholder="Rua, número, bairro, complemento"></textarea></div>
+        <div class="field"><label>Seu nome</label><input id="chkName" required placeholder="Como podemos te chamar?"></div>
+        <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" required placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" required placeholder="Rua, número, bairro, complemento"></textarea></div>
         <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
         ${fees.length ? `
         <div class="field"><label>Bairro de entrega</label>
-          <select id="chkBairro" onchange="updateCheckoutFee()">
+          <select id="chkBairro" required onchange="updateCheckoutFee()">
             <option value="">Selecione seu bairro...</option>
             ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)} — ${money(f.fee)}</option>`).join("")}
           </select>
@@ -717,8 +777,13 @@ function openCheckout(){
           <input id="chkTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 — deixe em branco se for o valor exato">
         </div>
         <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span id="checkoutTotalValue">${money(sub+initialFee)}</span></div>
-        <button class="btn btn-gold btn-block" onclick="submitOrder()">Confirmar e pagar</button>
+        <label class="consent-row">
+          <input type="checkbox" id="chkConsent" required>
+          <span>Li e aceito os <a href="#" onclick="event.preventDefault();openLegalDoc('terms');">Termos de Uso</a> e a <a href="#" onclick="event.preventDefault();openLegalDoc('privacy');">Política de Privacidade</a>.</span>
+        </label>
+        <button type="submit" class="btn btn-gold btn-block">Confirmar e pagar</button>
       </div>
+      </form>
     </div>`);
 }
 function requestLocation(){
@@ -796,7 +861,8 @@ function submitOrder(){
       status: STATE.config.autoAcceptOrders ? "preparo" : "pendente",
       createdAt: Date.now(),
       dateStr: todayStr(),
-      messages: []
+      messages: [],
+      courierAlert: null
     };
     const waUrl = buildWhatsAppUrl(order);
     if(waUrl && waWindow){ waWindow.location.href = waUrl; }
