@@ -68,6 +68,14 @@ function renderCourierPage(){
     content.innerHTML = `<div class="card empty-state">Pedido não encontrado (ou já foi removido).</div>`;
     return;
   }
+  if(order.status === "entregue"){
+    content.innerHTML = `<div class="card empty-state">✅ Esta entrega já foi concluída.<br>Este link não é mais válido.</div>`;
+    return;
+  }
+  if(order.status === "cancelado"){
+    content.innerHTML = `<div class="card empty-state">Este pedido foi cancelado.<br>Este link não é mais válido.</div>`;
+    return;
+  }
   const mapsUrl = order.location ? buildMapsUrl(order.location) : null;
   const itemsTxt = order.items.map(it=>`${it.qty}x ${escapeHtml(it.name)}`).join(", ");
   const trocoHtml = (order.payment==="dinheiro" && order.changeFor)
@@ -95,6 +103,12 @@ function renderCourierPage(){
 
 function sendCourierAlert(type){
   if(!orderId) return;
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(!order || order.status === "entregue" || order.status === "cancelado"){
+    showToast("Este link não é mais válido para essa entrega.");
+    renderCourierPage();
+    return;
+  }
   const payload = {type, ts: Date.now()};
   const statusEl = document.getElementById("courierAlertStatus");
   if(useFirebase){
