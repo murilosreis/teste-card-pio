@@ -111,3 +111,14 @@ img{max-width:100%;display:block;}
 .status-badge.saiu_entrega{background:var(--teal-100);color:var(--teal);}
 .status-badge.entregue{background:var(--gray-100);color:var(--ink-soft);}
 .status-badge.cancelado{background:var(--red-100);color:var(--red);}
+
+/* chat de dúvidas do pedido (compartilhado entre cardápio e painel) */
+.chat-thread{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:10px 4px;background:var(--gray-50);border-radius:10px;margin-top:4px;}
+.chat-msg{display:flex;}
+.chat-msg.from-me{justify-content:flex-end;}
+.chat-msg.from-store{justify-content:flex-start;}
+.chat-bubble{max-width:78%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.4;word-break:break-word;}
+.chat-msg.from-me .chat-bubble{background:var(--purple-700);color:var(--white);border-bottom-right-radius:4px;}
+.chat-msg.from-store .chat-bubble{background:var(--white);color:var(--ink);border-bottom-left-radius:4px;box-shadow:var(--shadow-sm);}
+.chat-input-row{display:flex;gap:8px;margin-top:10px;}
+.chat-input-row input{flex:1;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:10px;}

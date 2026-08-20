@@ -335,6 +335,18 @@ canvas{max-width:100%;}
               <span id="syncExplainer">Verificando conexão com o Firebase…</span>
             </p>
           </div>
+          <div class="card panel">
+            <h3>Envio automático de WhatsApp (opcional)</h3>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5">Se você configurou o servidor próprio de automação (veja o README do projeto whatsapp-server), preencha os dados abaixo para as mensagens de status saírem sozinhas, sem abrir o WhatsApp manualmente.</p>
+            <div class="field"><label>URL do servidor</label><input id="cfgWaServerUrl" placeholder="https://seu-servidor.up.railway.app"></div>
+            <div class="field"><label>Chave de API</label><input id="cfgWaServerKey" type="password" placeholder="A mesma senha definida no .env do servidor"></div>
+            <button class="btn btn-ghost" onclick="saveWaServerConfig()">Salvar e testar conexão</button>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:12px"><span id="waServerStatusText">Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual.</span></p>
+            <div id="waQrWrap" class="hidden" style="text-align:center;margin-top:14px;padding:16px;background:var(--gray-50);border-radius:12px">
+              <img id="waQrImage" style="width:200px;height:200px;border-radius:10px;background:var(--white)" alt="QR code do WhatsApp">
+              <p style="font-size:12px;color:var(--ink-soft);margin-top:10px;max-width:260px;margin-left:auto;margin-right:auto">Abra o WhatsApp do número da loja → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> e escaneie este código.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -454,6 +466,7 @@ function setAdminTab(tab){
   if(tab==="orders"){
     document.getElementById("ordersAlertDot").classList.add("hidden");
   }
+  if(tab!=="settings"){ clearTimeout(waStatusPollTimer); }
   renderAdmin();
 }
 
@@ -754,6 +767,7 @@ function renderOrders(){
       <div class="oc-right">
         <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
         <span class="oc-total">${money(o.total)}</span>
+        <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">💬 Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
         ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceOrderStatus('${o.id}','${nextStatus}')">${nextLabel}</button>` : ""}
         ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
       </div>
@@ -761,11 +775,77 @@ function renderOrders(){
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
+
+/* ---------- conversa do pedido (dúvidas do cliente) ---------- */
+function openOrderChat(orderId){
+  openScrim(`<div class="sheet" onclick="event.stopPropagation()" id="adminChatSheetInner"><div class="detail-body" style="text-align:center;padding:40px 20px;color:var(--ink-soft)">Carregando conversa...</div></div>`);
+  if(useFirebase){
+    adminChatUnsub = db.collection("orders").doc(orderId).onSnapshot(doc=>{
+      if(!doc.exists) return;
+      renderAdminChatContent(Object.assign({id:doc.id}, doc.data()));
+    }, ()=>{ showToast("Não consegui carregar a conversa em tempo real."); });
+  } else {
+    const order = STATE.orders.find(o=>o.id===orderId);
+    if(order) renderAdminChatContent(order);
+  }
+}
+function renderAdminChatContent(order){
+  const wrap = document.getElementById("adminChatSheetInner");
+  if(!wrap) return;
+  const messages = order.messages || [];
+  const messagesHtml = messages.length ? messages.map(m=>`
+    <div class="chat-msg ${m.sender==='loja'?'from-me':'from-store'}"><div class="chat-bubble">${escapeHtml(m.text)}</div></div>
+  `).join("") : `<p style="font-size:12.5px;color:var(--ink-soft);text-align:center;padding:14px 0">Sem mensagens ainda.</p>`;
+  const draftInput = document.getElementById("adminChatInput");
+  const draft = draftInput ? draftInput.value : "";
+  wrap.innerHTML = `
+    <div class="cart-head"><h3>Conversa — ${order.code}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+    <div class="detail-body">
+      <div class="oc-meta" style="margin-bottom:10px">${escapeHtml(order.customerName)} · ${escapeHtml(order.phone)}</div>
+      <div class="chat-thread" id="adminChatThread">${messagesHtml}</div>
+      <div class="chat-input-row">
+        <input id="adminChatInput" placeholder="Responder ao cliente...">
+        <button class="btn btn-primary btn-sm" onclick="sendAdminChatMessage('${order.id}')">Enviar</button>
+      </div>
+    </div>`;
+  const newInput = document.getElementById("adminChatInput");
+  if(newInput){
+    newInput.value = draft;
+    newInput.onkeydown = (e)=>{ if(e.key==="Enter") sendAdminChatMessage(order.id); };
+  }
+  const thread = document.getElementById("adminChatThread");
+  if(thread) thread.scrollTop = thread.scrollHeight;
+}
+function sendAdminChatMessage(orderId){
+  const input = document.getElementById("adminChatInput");
+  const text = input.value.trim();
+  if(!text) return;
+  addOrderMessage(orderId, "loja", text);
+  input.value = "";
+  if(!useFirebase){
+    const order = STATE.orders.find(o=>o.id===orderId);
+    if(order) renderAdminChatContent(order);
+  }
+}
+let adminChatUnsub = null;
 function advanceOrderStatus(orderId, status){
   const order = STATE.orders.find(o=>o.id===orderId);
   if(order && ["preparo","saiu_entrega","entregue"].includes(status)){
-    const waUrl = buildCustomerStatusWhatsAppUrl(order, status);
-    if(waUrl) window.open(waUrl, "_blank");
+    const serverUrl = (STATE.config.waServerUrl||"").trim();
+    const message = buildCustomerStatusMessage(order, status);
+    if(serverUrl){
+      sendViaWhatsAppServer(order.phone, message).then(ok=>{
+        if(ok){ showToast("Mensagem enviada automaticamente pro cliente."); }
+        else {
+          showToast("Servidor indisponível — abrindo o WhatsApp manual.");
+          const waUrl = buildCustomerStatusWhatsAppUrl(order, status);
+          if(waUrl) window.open(waUrl, "_blank");
+        }
+      });
+    } else {
+      const waUrl = buildCustomerStatusWhatsAppUrl(order, status);
+      if(waUrl) window.open(waUrl, "_blank");
+    }
   }
   updateOrderStatus(orderId, status, renderOrders);
 }
@@ -1030,7 +1110,60 @@ function renderSettings(){
   document.getElementById("cfgOpen").value = STATE.config.isOpen ? "1" : "0";
   document.getElementById("cfgWhatsapp").value = STATE.config.whatsappNumber || "";
   document.getElementById("cfgAutoAccept").value = STATE.config.autoAcceptOrders === false ? "0" : "1";
+  document.getElementById("cfgWaServerUrl").value = STATE.config.waServerUrl || "";
+  document.getElementById("cfgWaServerKey").value = STATE.config.waServerKey || "";
   renderFeeManageList();
+  refreshWaServerStatus();
+}
+function saveWaServerConfig(){
+  STATE.config.waServerUrl = document.getElementById("cfgWaServerUrl").value.trim();
+  STATE.config.waServerKey = document.getElementById("cfgWaServerKey").value.trim();
+  saveConfig();
+  showToast("Configuração salva — verificando conexão...");
+  refreshWaServerStatus();
+}
+let waStatusPollTimer = null;
+function refreshWaServerStatus(){
+  clearTimeout(waStatusPollTimer);
+  const label = document.getElementById("waServerStatusText");
+  const qrWrap = document.getElementById("waQrWrap");
+  if(!label) return;
+  if(!(STATE.config.waServerUrl||"").trim()){
+    label.textContent = "Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual.";
+    qrWrap.classList.add("hidden");
+    return;
+  }
+  label.textContent = "Verificando conexão com o servidor...";
+  pollWaServerStatus();
+}
+function pollWaServerStatus(){
+  const label = document.getElementById("waServerStatusText");
+  const qrWrap = document.getElementById("waQrWrap");
+  const qrImg = document.getElementById("waQrImage");
+  if(!label) return;
+  checkWhatsAppServerStatus().then(status=>{
+    const map = {
+      conectado: "🟢 Conectado — as mensagens de status saem automaticamente.",
+      aguardando_leitura_qr: "🟡 Escaneie o QR code abaixo com o WhatsApp da loja.",
+      desconectado: "🟠 Servidor no ar, mas o WhatsApp está desconectado no momento.",
+      erro_conexao: "🔴 Não consegui falar com o servidor — confira a URL.",
+      nao_configurado: "Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual."
+    };
+    label.textContent = map[status] || "Status desconhecido.";
+    if(status === "aguardando_leitura_qr"){
+      fetchWhatsAppQr().then(data=>{
+        if(data && data.qrImage){ qrImg.src = data.qrImage; qrWrap.classList.remove("hidden"); }
+        else { qrWrap.classList.add("hidden"); }
+      });
+      waStatusPollTimer = setTimeout(pollWaServerStatus, 5000);
+    } else if(status === "desconectado" || status === "erro_conexao"){
+      qrWrap.classList.add("hidden");
+      waStatusPollTimer = setTimeout(pollWaServerStatus, 8000);
+    } else {
+      qrWrap.classList.add("hidden");
+      clearTimeout(waStatusPollTimer);
+    }
+  });
 }
 function renderFeeManageList(){
   const fees = STATE.config.deliveryFees || [];
@@ -1082,7 +1215,10 @@ function openScrim(innerHtml){
   div.innerHTML = innerHtml;
   document.body.appendChild(div);
 }
-function closeScrim(){ const s = document.getElementById("activeScrim"); if(s) s.remove(); }
+function closeScrim(){
+  if(adminChatUnsub){ adminChatUnsub(); adminChatUnsub = null; }
+  const s = document.getElementById("activeScrim"); if(s) s.remove();
+}
 
 /* =====================================================================
    INIT

@@ -32,7 +32,9 @@ let STATE = {
     adminPassword:"admin123",
     categories:["Lanches","Bebidas","Sobremesas"],
     whatsappNumber:"",
-    autoAcceptOrders:true
+    autoAcceptOrders:true,
+    waServerUrl:"",
+    waServerKey:""
   },
   products: [],
   combos: [],
@@ -142,6 +144,34 @@ function buildCustomerStatusWhatsAppUrl(order, status){
   if(!digits) return null;
   const text = encodeURIComponent(buildCustomerStatusMessage(order, status));
   return `https://wa.me/${digits}?text=${text}`;
+}
+
+/* ---------- envio automático via servidor próprio (opcional) ---------- */
+function sendViaWhatsAppServer(phone, message){
+  const url = (STATE.config.waServerUrl||"").trim();
+  const key = STATE.config.waServerKey||"";
+  if(!url) return Promise.resolve(false);
+  return fetch(url.replace(/\/$/,"") + "/send-message", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "x-api-key": key},
+    body: JSON.stringify({phone: normalizeBrazilPhone(phone), message})
+  }).then(r=>r.ok).catch(()=>false);
+}
+function checkWhatsAppServerStatus(){
+  const url = (STATE.config.waServerUrl||"").trim();
+  if(!url) return Promise.resolve("nao_configurado");
+  return fetch(url.replace(/\/$/,"") + "/status")
+    .then(r=>r.json())
+    .then(d=>d.status || "desconectado")
+    .catch(()=>"erro_conexao");
+}
+function fetchWhatsAppQr(){
+  const url = (STATE.config.waServerUrl||"").trim();
+  const key = STATE.config.waServerKey||"";
+  if(!url) return Promise.resolve(null);
+  return fetch(url.replace(/\/$/,"") + "/qrcode", { headers: {"x-api-key": key} })
+    .then(r=>r.json())
+    .catch(()=>null);
 }
 
 /* ---------- persistência: Firebase (com fallback localStorage) ---------- */
@@ -278,11 +308,25 @@ function deleteUserData(id, onDone){ usersCrud.remove(id, onDone); }
 
 function createOrderData(order){
   if(useFirebase){
-    return db.collection("orders").add(order).catch(()=>handleFirestoreDown());
+    return db.collection("orders").add(order).then(ref=>{ order.id = ref.id; return ref; }).catch(()=>handleFirestoreDown());
   } else {
     order.id = uid();
     STATE.orders.unshift(order);
     saveLocal();
+    return Promise.resolve();
+  }
+}
+
+/* ---------- mensagens do pedido (dúvidas cliente <-> loja) ---------- */
+function addOrderMessage(orderId, sender, text){
+  const msg = {sender, text, ts: Date.now()};
+  if(useFirebase){
+    return db.collection("orders").doc(orderId).update({
+      messages: firebase.firestore.FieldValue.arrayUnion(msg)
+    }).catch(()=>handleFirestoreDown());
+  } else {
+    const o = STATE.orders.find(x=>x.id===orderId);
+    if(o){ o.messages = o.messages || []; o.messages.push(msg); saveLocal(); }
     return Promise.resolve();
   }
 }
