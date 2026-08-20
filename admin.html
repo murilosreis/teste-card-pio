@@ -764,8 +764,8 @@ function renderOrders(){
         <span class="oc-total">${money(o.total)}</span>
         <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">💬 Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
         <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Excluir pedido">🗑</button>
-        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceOrderStatus('${o.id}','${nextStatus}')">${nextLabel}</button>` : ""}
-        ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="updateOrderStatus('${o.id}','cancelado',renderOrders)">Cancelar</button>` : ""}
+        ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="confirmAdvanceOrderStatus('${o.id}','${nextStatus}','${escapeAttr(nextLabel)}')">${nextLabel}</button>` : ""}
+        ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="confirmCancelOrder('${o.id}')">Cancelar</button>` : ""}
       </div>
     </div>`;
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
@@ -860,6 +860,34 @@ function sendAdminChatMessage(orderId){
   }
 }
 let adminChatUnsub = null;
+function confirmAdvanceOrderStatus(orderId, status, label){
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(!order) return;
+  const willNotify = status === "entregue";
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>Confirmar ação</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <p style="font-size:14px;color:var(--ink-soft);line-height:1.5">Confirma <b>${escapeHtml(label)}</b> para o pedido <b>${order.code}</b> (${escapeHtml(order.customerName)})?</p>
+        ${willNotify ? `<p style="font-size:12.5px;color:var(--purple-700);margin-top:8px">Isso envia a mensagem de agradecimento pro cliente.</p>` : ""}
+        <button class="btn btn-primary btn-block" style="margin-top:18px" onclick="closeScrim(); advanceOrderStatus('${orderId}','${status}');">Confirmar</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeScrim()">Voltar</button>
+      </div>
+    </div>`);
+}
+function confirmCancelOrder(orderId){
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(!order) return;
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>Cancelar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <p style="font-size:14px;color:var(--ink-soft);line-height:1.5">Cancelar o pedido <b>${order.code}</b> (${escapeHtml(order.customerName)})? O link do entregador para esse pedido para de funcionar.</p>
+        <button class="btn btn-danger btn-block" style="margin-top:18px" onclick="closeScrim(); updateOrderStatus('${orderId}','cancelado',renderOrders);">Cancelar pedido</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeScrim()">Voltar</button>
+      </div>
+    </div>`);
+}
 function advanceOrderStatus(orderId, status){
   const order = STATE.orders.find(o=>o.id===orderId);
   if(order && status === "entregue"){
