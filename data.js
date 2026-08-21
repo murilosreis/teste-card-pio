@@ -77,9 +77,11 @@ function openLegalDoc(kind){
       <p>Cancelamentos, trocas ou reembolsos devem ser tratados diretamente com a ${escapeHtml(store)} ${contactLine}, e seguem o Código de Defesa do Consumidor (Lei nº 8.078/1990).</p>
       <h4>5. Limitação de responsabilidade</h4>
       <p>Este cardápio é uma ferramenta de pedidos. Prazos de entrega, disponibilidade de itens e comunicação por WhatsApp podem sofrer variações fora do controle da plataforma (trânsito, demanda, instabilidade de rede, etc.). Em caso de problema com o pedido, o contato deve ser feito diretamente com a loja.</p>
-      <h4>6. Alterações</h4>
+      <h4>6. Proteção de dados</h4>
+      <p>O tratamento dos seus dados pessoais neste cardápio segue a Política de Privacidade, que detalha quais dados são coletados, a base legal, as medidas de segurança adotadas e os seus direitos como titular, nos termos da LGPD (Lei nº 13.709/2018).</p>
+      <h4>7. Alterações</h4>
       <p>Estes termos podem ser atualizados a qualquer momento, sem aviso prévio individual. A versão vigente é sempre a publicada nesta página.</p>
-      <h4>7. Legislação aplicável</h4>
+      <h4>8. Legislação aplicável</h4>
       <p>Este serviço é regido pelas leis brasileiras, incluindo o Código de Defesa do Consumidor e a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p>
     `;
   } else {
@@ -89,22 +91,50 @@ function openLegalDoc(kind){
       <h4>2. Quais dados coletamos</h4>
       <ul>
         <li>Nome e telefone, informados no pedido;</li>
-        <li>Endereço de entrega e, opcionalmente, localização geográfica (somente se você autorizar o acesso pelo navegador);</li>
+        <li>Endereço de entrega e, opcionalmente, localização geográfica exata (somente se você autorizar o acesso pelo navegador);</li>
         <li>Itens do pedido, forma de pagamento escolhida e, se houver, mensagens trocadas sobre o pedido;</li>
         <li>Um identificador salvo no seu navegador (armazenamento local) para você conseguir acompanhar seu próprio pedido depois.</li>
       </ul>
-      <h4>3. Para que usamos esses dados</h4>
+      <h4>3. Base legal para o tratamento (Art. 7º da LGPD)</h4>
+      <ul>
+        <li><b>Execução de contrato:</b> nome, telefone, endereço e itens do pedido são necessários para processar, preparar e entregar o que você pediu;</li>
+        <li><b>Consentimento:</b> a localização geográfica exata só é coletada se você autorizar explicitamente pelo navegador, e pode ser recusada sem impedir o pedido;</li>
+        <li><b>Legítimo interesse:</b> o histórico de pedidos pode ser usado para relatórios internos de vendas da ${escapeHtml(store)}.</li>
+      </ul>
+      <h4>4. Para que usamos esses dados</h4>
       <p>Exclusivamente para processar, preparar, entregar e acompanhar o seu pedido, e para contato sobre ele (confirmação, status e dúvidas). Não usamos seus dados para publicidade nem os vendemos a terceiros.</p>
-      <h4>4. Com quem compartilhamos</h4>
-      <p>Os dados ficam visíveis para a equipe da ${escapeHtml(store)} responsável pelo preparo e entrega, e são armazenados em serviços de nuvem (Firebase/Google Cloud) usados para operar este cardápio.</p>
-      <h4>5. Localização</h4>
-      <p>O compartilhamento de localização é sempre opcional e depende da sua autorização explícita no navegador. Ela é usada apenas para facilitar a entrega e pode ser recusada sem impedir o pedido.</p>
-      <h4>6. Seus direitos (LGPD)</h4>
-      <p>Você pode solicitar, a qualquer momento, acesso, correção ou exclusão dos seus dados, ou retirar um consentimento dado — basta entrar em contato ${contactLine}.</p>
-      <h4>7. Segurança e retenção</h4>
-      <p>Adotamos medidas razoáveis de segurança para proteger seus dados, mas nenhum sistema é 100% livre de risco. Os dados são mantidos pelo tempo necessário para cumprir a finalidade do pedido e obrigações legais.</p>
-      <h4>8. Alterações</h4>
-      <p>Esta política pode ser atualizada a qualquer momento. A versão vigente é sempre a publicada nesta página.</p>
+      <h4>5. Com quem compartilhamos e transferência internacional</h4>
+      <p>Os dados ficam visíveis para a equipe da ${escapeHtml(store)} responsável pelo preparo e entrega. São armazenados em serviços de nuvem (Firebase/Google Cloud) que, dependendo da configuração da loja, podem manter servidores fora do Brasil — nesse caso, a transferência segue as garantias exigidas pelo art. 33 da LGPD.</p>
+      <h4>6. Segurança da informação (Art. 46 da LGPD)</h4>
+      <p>Adotamos medidas técnicas e administrativas para proteger seus dados contra acessos não autorizados e situações acidentais ou ilícitas de destruição, perda, alteração ou vazamento, entre elas:</p>
+      <ul>
+        <li>Conexão criptografada (HTTPS) entre seu navegador e o servidor;</li>
+        <li>Acesso ao painel administrativo restrito por senha, com controle de quais funcionários têm login;</li>
+        <li>Regras de acesso ao banco de dados configuradas para permitir apenas as operações necessárias ao funcionamento do cardápio.</li>
+      </ul>
+      <p>Nenhum sistema é 100% livre de risco. Caso ocorra um incidente de segurança com risco relevante aos seus dados, a ${escapeHtml(store)} se compromete a comunicar a Autoridade Nacional de Proteção de Dados (ANPD) e os titulares afetados em prazo razoável, conforme o art. 48 da LGPD.</p>
+      <h4>7. Retenção e eliminação dos dados</h4>
+      <p>Os dados do pedido são mantidos pelo tempo necessário para cumprir a finalidade do pedido, obrigações legais e fiscais, e para eventual defesa em processos administrativos ou judiciais. Após esse período, podem ser eliminados ou anonimizados.</p>
+      <h4>8. Seus direitos como titular dos dados (Art. 18 da LGPD)</h4>
+      <p>Você pode solicitar, a qualquer momento e gratuitamente:</p>
+      <ul>
+        <li>Confirmação da existência de tratamento dos seus dados;</li>
+        <li>Acesso aos seus dados;</li>
+        <li>Correção de dados incompletos, inexatos ou desatualizados;</li>
+        <li>Anonimização, bloqueio ou eliminação de dados desnecessários ou tratados em desconformidade com a lei;</li>
+        <li>Portabilidade dos dados a outro fornecedor de serviço;</li>
+        <li>Eliminação dos dados tratados com base no seu consentimento;</li>
+        <li>Informação sobre com quem seus dados são compartilhados;</li>
+        <li>Informação sobre a possibilidade de não fornecer consentimento e suas consequências;</li>
+        <li>Revogação do consentimento dado (por exemplo, a localização);</li>
+        <li>Revisão de decisões automatizadas, quando aplicável.</li>
+      </ul>
+      <h4>9. Como exercer seus direitos</h4>
+      <p>Basta entrar em contato ${contactLine}, informando o pedido ou telefone usado, para solicitar qualquer um dos direitos acima.</p>
+      <h4>10. Cookies e armazenamento local</h4>
+      <p>Este site usa o armazenamento local do seu navegador (não são cookies de rastreamento de terceiros) apenas para lembrar o código do seu último pedido, permitindo acompanhá-lo depois. Você pode limpar esse armazenamento a qualquer momento nas configurações do seu navegador.</p>
+      <h4>11. Alterações nesta política</h4>
+      <p>Esta política é revisada sempre que o cardápio ganha uma função nova que colete ou use dados de forma diferente da descrita aqui. A versão vigente é sempre a publicada nesta página.</p>
     `;
   }
   openScrim(`
@@ -247,10 +277,11 @@ function buildCustomerStatusWhatsAppUrl(order, status){
 
 /* ---------- aviso de chegada do entregador (WhatsApp direto pro cliente) ---------- */
 function buildCourierAlertMessage(order, type){
+  const store = STATE.config.storeName || "nossa loja";
   if(type === "chegou"){
-    return "Olá, " + order.customerName + "! O entregador do seu pedido " + order.code + " já está na porta.";
+    return "Olá, " + order.customerName + "! O entregador da " + store + " com o seu pedido " + order.code + " já está na porta.";
   }
-  return "Olá, " + order.customerName + "! O entregador do seu pedido " + order.code + " está chegando.";
+  return "Olá, " + order.customerName + "! O entregador da " + store + " com o seu pedido " + order.code + " está chegando.";
 }
 function buildCourierAlertWhatsAppUrl(order, type){
   const digits = normalizeBrazilPhone(order.phone);
