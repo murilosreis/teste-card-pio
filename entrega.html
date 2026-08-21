@@ -97,6 +97,11 @@ function renderCourierPage(){
     }
   }
 
+  const phoneDigits = normalizeBrazilPhone(order.phone);
+  const deliveredHtml = order.courierDelivered
+    ? `<div class="courier-ack seen" style="margin-top:14px">✅ Você já avisou o administrador que entregou este pedido.</div>`
+    : `<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="reportDelivered()">✅ Entreguei — avisar o administrativo</button>`;
+
   content.innerHTML = `
     <div class="card courier-card">
       <div class="courier-code">${order.code}</div>
@@ -110,9 +115,27 @@ function renderCourierPage(){
       <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="sendCourierAlert('chegando')">🛵 Avisar que estou chegando</button>
       <button class="btn btn-gold btn-block" style="margin-top:10px" onclick="sendCourierAlert('chegou')">🚪 Cheguei na porta</button>
       <p style="font-size:11.5px;color:var(--gray-300);margin-top:8px;text-align:center">Cada botão abre o WhatsApp do cliente com a mensagem pronta — é só apertar enviar.</p>
+      ${phoneDigits ? `<a class="btn btn-danger btn-block" style="margin-top:16px" href="tel:+${phoneDigits}">📞 Ligar para o cliente (casos extremos)</a>` : ""}
+      ${deliveredHtml}
       <div class="courier-status-msg" id="courierAlertStatus">${lastActionMsg}</div>
       ${ackHtml}
     </div>`;
+}
+
+function reportDelivered(){
+  if(!orderId) return;
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(!order) return;
+  const payload = {ts: Date.now()};
+  if(useFirebase){
+    db.collection("orders").doc(orderId).update({courierDelivered: payload}).then(()=>{
+      showToast("Administrativo avisado — aguarde a confirmação final do pedido.");
+    }).catch(()=>showToast("Não consegui avisar o administrativo. Tente de novo."));
+  } else {
+    order.courierDelivered = payload;
+    showToast("Modo local — o administrativo só é avisado com o Firebase conectado.");
+    renderCourierPage();
+  }
 }
 
 function sendCourierAlert(type){

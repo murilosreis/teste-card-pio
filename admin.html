@@ -535,6 +535,26 @@ function startAlertRepeat(){
 function stopAlertRepeat(){
   clearInterval(alertRepeatTimer);
 }
+let knownCourierDeliveredTs = null;
+function checkForCourierDeliveries(){
+  const currentMap = {};
+  STATE.orders.forEach(o=>{ if(o.courierDelivered) currentMap[o.id] = o.courierDelivered.ts; });
+  if(knownCourierDeliveredTs === null){
+    knownCourierDeliveredTs = currentMap;
+    return;
+  }
+  const newlyDelivered = STATE.orders.filter(o=>{
+    if(!o.courierDelivered) return false;
+    return knownCourierDeliveredTs[o.id] !== o.courierDelivered.ts;
+  });
+  knownCourierDeliveredTs = currentMap;
+  if(newlyDelivered.length === 0) return;
+  playAlertSound();
+  newlyDelivered.forEach(o=>{
+    showToast(`📦 O entregador confirmou a entrega do pedido ${o.code} — falta você fechar o pedido.`);
+  });
+  if(adminTab === "orders") renderOrders();
+}
 function checkForNewOrders(){
   const currentIds = STATE.orders.map(o=>o.id);
   if(knownOrderIds === null){
@@ -824,6 +844,7 @@ function renderOrders(){
         <div class="oc-items">${itemsTxt}</div>
         <div class="oc-meta" style="margin-top:4px">${escapeHtml(o.address)}</div>
         ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">💵 Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
+        ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">📦 Entregador confirmou a entrega — falta você fechar o pedido</div>` : ""}
         ${o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
           <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
@@ -1442,7 +1463,11 @@ function closeScrim(){
 /* =====================================================================
    INIT
 ===================================================================== */
-initData(renderAdmin, checkForNewOrders);
+function onOrdersChanged(){
+  checkForNewOrders();
+  checkForCourierDeliveries();
+}
+initData(renderAdmin, onOrdersChanged);
 if(sessionStorage.getItem("sd_admin_logged") === "1"){
   loggedUserName = sessionStorage.getItem("sd_admin_name") || "Administrador";
   showAdminShell();
