@@ -18,6 +18,10 @@
 .brand{display:flex;align-items:center;gap:10px;}
 .brand .mark{width:38px;height:38px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
 .brand .mark::after{content:"";position:absolute;inset:8px;background:var(--purple-900);border-radius:2px;}
+.brand .mark.custom-logo{transform:none;border-radius:9px;background-size:cover;background-position:center;background-color:var(--white);}
+.brand .mark.custom-logo::after{display:none;}
+.menu-header.has-custom-bg{background-size:cover;background-position:center;}
+.menu-header.has-custom-bg::before{display:none;}
 .brand-name{color:var(--white);font-size:19px;font-weight:700;line-height:1.1;}
 .brand-tag{color:var(--gold-300);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
 .cart-btn{position:relative;background:rgba(255,255,255,.12);color:var(--white);width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;}
@@ -155,11 +159,11 @@
 <body>
 
 <div id="view-cardapio">
-  <header class="menu-header diamond-field">
+  <header class="menu-header diamond-field" id="menuHeaderEl">
     <div class="container">
       <div class="top">
         <div class="brand">
-          <span class="mark"></span>
+          <span class="mark" id="brandMark"></span>
           <div>
             <div class="brand-name" id="storeNameLabel">Sabor Direto</div>
             <div class="brand-tag">Peça online</div>
@@ -221,8 +225,31 @@ let activeCategory = "Todos";
 /* =====================================================================
    CARDÁPIO — render
 ===================================================================== */
+function applyBranding(){
+  const mark = document.getElementById("brandMark");
+  if(mark){
+    if(STATE.config.logoImage){
+      mark.classList.add("custom-logo");
+      mark.style.backgroundImage = `url('${STATE.config.logoImage.replace(/'/g,"%27")}')`;
+    } else {
+      mark.classList.remove("custom-logo");
+      mark.style.backgroundImage = "";
+    }
+  }
+  const header = document.getElementById("menuHeaderEl");
+  if(header){
+    if(STATE.config.headerImage){
+      header.classList.add("has-custom-bg");
+      header.style.backgroundImage = `linear-gradient(135deg, rgba(42,15,78,.8), rgba(42,15,78,.6)), url('${STATE.config.headerImage.replace(/'/g,"%27")}')`;
+    } else {
+      header.classList.remove("has-custom-bg");
+      header.style.backgroundImage = "";
+    }
+  }
+}
 function renderCardapio(){
   document.getElementById("storeNameLabel").textContent = STATE.config.storeName;
+  applyBranding();
   const dot = document.getElementById("storeStatusDot");
   const txt = document.getElementById("storeStatusText");
   dot.style.background = STATE.config.isOpen ? "var(--teal)" : "var(--red)";
@@ -555,12 +582,12 @@ function renderTrackingContent(order){
     stepsHtml = `<div class="track-step" style="color:var(--red);font-weight:700"><span class="dot" style="background:var(--red)"></span>Pedido cancelado</div>`;
   } else if(isPending){
     stepsHtml = `<div class="track-step current"><span class="dot"></span>Aguardando confirmação da loja</div>` +
-      STATUS_FLOW.map(s=>`<div class="track-step"><span class="dot"></span>${STATUS_LABEL[s]}</div>`).join("");
+      STATUS_FLOW.map(s=>`<div class="track-step"><span class="dot"></span>${statusLabelForOrder(order,s)}</div>`).join("");
   } else {
     stepsHtml = STATUS_FLOW.map((s,i)=>{
       const isLastStep = i === STATUS_FLOW.length-1;
       const cls = i < currentIdx ? "done" : (i===currentIdx ? (isLastStep ? "done" : "current") : "");
-      return `<div class="track-step ${cls}"><span class="dot"></span>${STATUS_LABEL[s]}</div>`;
+      return `<div class="track-step ${cls}"><span class="dot"></span>${statusLabelForOrder(order,s)}</div>`;
     }).join("");
   }
   const itemsTxt = order.items.map(it=>{
@@ -753,13 +780,16 @@ function renderCartSheetContent(){
 let selectedPayment = "pix";
 let selectedBairro = null;
 let capturedLocation = null;
+let selectedDeliveryType = "entrega";
 function openCheckout(){
   selectedPayment = "pix";
   selectedBairro = null;
   capturedLocation = null;
+  selectedDeliveryType = "entrega";
   const sub = cartSubtotal();
   const fees = STATE.config.deliveryFees || [];
   const initialFee = fees.length ? 0 : (STATE.config.deliveryFee||0);
+  const storeAddr = STATE.config.storeAddress || "";
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>Finalizar pedido</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
@@ -767,15 +797,27 @@ function openCheckout(){
       <div class="checkout-body">
         <div class="field"><label>Seu nome</label><input id="chkName" required placeholder="Como podemos te chamar?"></div>
         <div class="field"><label>Telefone / WhatsApp</label><input id="chkPhone" required placeholder="(00) 00000-0000"></div>
-        <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" required placeholder="Rua, número, bairro, complemento"></textarea></div>
-        <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
-        ${fees.length ? `
-        <div class="field"><label>Bairro de entrega</label>
-          <select id="chkBairro" required onchange="updateCheckoutFee()">
-            <option value="">Selecione seu bairro...</option>
-            ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)} — ${money(f.fee)}</option>`).join("")}
-          </select>
-        </div>` : ""}
+        <div class="field">
+          <label>Como você quer receber?</label>
+          <div class="pay-options">
+            <div class="pay-opt active" id="delivery-entrega" onclick="selectDeliveryType('entrega')">🛵 Entrega</div>
+            <div class="pay-opt" id="delivery-retirada" onclick="selectDeliveryType('retirada')">🏪 Retirar no local</div>
+          </div>
+        </div>
+        <div id="deliverySection">
+          <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" required placeholder="Rua, número, bairro, complemento"></textarea></div>
+          <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
+          ${fees.length ? `
+          <div class="field"><label>Bairro de entrega</label>
+            <select id="chkBairro" onchange="updateCheckoutFee()">
+              <option value="">Selecione seu bairro...</option>
+              ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)} — ${money(f.fee)}</option>`).join("")}
+            </select>
+          </div>` : ""}
+        </div>
+        <div id="pickupInfo" class="hidden" style="background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;color:var(--ink-soft)">
+          🏪 Retire seu pedido em:<br><b>${storeAddr ? escapeHtml(storeAddr) : "Endereço da loja — combine pelo WhatsApp"}</b>
+        </div>
         <div class="field">
           <label>Forma de pagamento</label>
           <div class="pay-options">
@@ -816,12 +858,31 @@ function requestLocation(){
   );
 }
 function updateCheckoutFee(){
-  const sel = document.getElementById("chkBairro");
-  const idx = sel.value;
-  selectedBairro = idx==="" ? null : STATE.config.deliveryFees[idx];
   const sub = cartSubtotal();
-  const fee = selectedBairro ? selectedBairro.fee : 0;
+  let fee = 0;
+  if(selectedDeliveryType === "entrega"){
+    const fees = STATE.config.deliveryFees || [];
+    if(fees.length){
+      const sel = document.getElementById("chkBairro");
+      const idx = sel ? sel.value : "";
+      selectedBairro = idx==="" ? null : fees[idx];
+      fee = selectedBairro ? selectedBairro.fee : 0;
+    } else {
+      fee = STATE.config.deliveryFee || 0;
+    }
+  }
   document.getElementById("checkoutTotalValue").textContent = money(sub+fee);
+}
+function selectDeliveryType(type){
+  selectedDeliveryType = type;
+  document.getElementById("delivery-entrega").classList.toggle("active", type==="entrega");
+  document.getElementById("delivery-retirada").classList.toggle("active", type==="retirada");
+  const isDelivery = type === "entrega";
+  document.getElementById("deliverySection").classList.toggle("hidden", !isDelivery);
+  document.getElementById("pickupInfo").classList.toggle("hidden", isDelivery);
+  const addressInput = document.getElementById("chkAddress");
+  if(addressInput) addressInput.required = isDelivery;
+  updateCheckoutFee();
 }
 function selectPayment(p){
   selectedPayment = p;
@@ -831,18 +892,24 @@ function selectPayment(p){
 function submitOrder(){
   const name = document.getElementById("chkName").value.trim();
   const phone = document.getElementById("chkPhone").value.trim();
-  const address = document.getElementById("chkAddress").value.trim();
-  if(!name || !phone || !address){ showToast("Preencha nome, telefone e endereço."); return; }
+  const addressRaw = document.getElementById("chkAddress").value.trim();
+  const isPickup = selectedDeliveryType === "retirada";
+  if(!name || !phone){ showToast("Preencha nome e telefone."); return; }
+  if(!isPickup && !addressRaw){ showToast("Preencha o endereço de entrega."); return; }
   const phoneDigitsCheck = phone.replace(/\D/g,"");
   if(phoneDigitsCheck.length < 10 || phoneDigitsCheck.length > 13){ showToast("Digite um telefone válido, com DDD."); return; }
-  const fees = STATE.config.deliveryFees || [];
-  let fee = STATE.config.deliveryFee || 0;
-  let bairroLabel = "";
-  if(fees.length){
-    if(!selectedBairro){ showToast("Selecione o bairro de entrega."); return; }
-    fee = selectedBairro.fee;
-    bairroLabel = selectedBairro.bairro;
+
+  let fee = 0, bairroLabel = "";
+  if(!isPickup){
+    const fees = STATE.config.deliveryFees || [];
+    fee = STATE.config.deliveryFee || 0;
+    if(fees.length){
+      if(!selectedBairro){ showToast("Selecione o bairro de entrega."); return; }
+      fee = selectedBairro.fee;
+      bairroLabel = selectedBairro.bairro;
+    }
   }
+  const address = isPickup ? (addressRaw || "Retirada no estabelecimento") : addressRaw;
   const sub = cartSubtotal();
   const total = sub + fee;
 
@@ -866,7 +933,8 @@ function submitOrder(){
       code,
       customerName: name,
       phone, address, bairro: bairroLabel,
-      location: capturedLocation,
+      deliveryType: isPickup ? "retirada" : "entrega",
+      location: isPickup ? null : capturedLocation,
       items: cart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:c.note||"", isCombo:!!c.isCombo, choices:c.choiceLabels||[]})),
       subtotal: sub, deliveryFee: fee, total,
       payment: selectedPayment, changeFor, changeAmount,
@@ -896,6 +964,7 @@ function showOrderConfirmation(order, waUrl){
         <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
         <div class="order-code">${order.code}</div>
         <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
+        ${order.deliveryType === "retirada" ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">🏪 Retirada no local${STATE.config.storeAddress ? " — " + escapeHtml(STATE.config.storeAddress) : ""}</div>` : ""}
         ${order.changeFor ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">💵 Troco combinado para ${money(order.changeFor)} (troco de ${money(order.changeAmount)})</div>` : ""}
         ${waUrl ? `<a class="btn btn-gold btn-block" style="margin-top:16px" href="${waUrl}" target="_blank">Enviar pelo WhatsApp</a><div style="font-size:11.5px;color:var(--gray-300);margin-top:6px">Se não abriu sozinho, toque no botão acima para confirmar por lá.</div>` : ""}
         <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openTracking('${order.id}')">📦 Acompanhar meu pedido</button>

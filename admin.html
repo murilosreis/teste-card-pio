@@ -325,6 +325,18 @@ canvas{max-width:100%;}
           <div class="card panel">
             <h3>Loja</h3>
             <div class="field"><label>Nome da loja</label><input id="cfgStoreName"></div>
+            <div class="field">
+              <label>Logo da loja</label>
+              <input id="cfgLogoImage" placeholder="Cole uma URL de imagem, ou envie um arquivo abaixo">
+              <input type="file" accept="image/*" style="margin-top:8px" onchange="handleImageFileSelect(this,'cfgLogoImage', 300, 0.85)">
+              <span id="cfgLogoImageStatus" style="font-size:11.5px;color:var(--gray-300);margin-top:4px;display:block">Recomendado: imagem quadrada (ex.: 300x300px). Fundo transparente (PNG) fica melhor.</span>
+            </div>
+            <div class="field">
+              <label>Imagem de fundo do cabeçalho</label>
+              <input id="cfgHeaderImage" placeholder="Cole uma URL de imagem, ou envie um arquivo abaixo">
+              <input type="file" accept="image/*" style="margin-top:8px" onchange="handleImageFileSelect(this,'cfgHeaderImage', 1600, 0.8)">
+              <span id="cfgHeaderImageStatus" style="font-size:11.5px;color:var(--gray-300);margin-top:4px;display:block">Recomendado: imagem larga, proporção 4:1 (ex.: 1600x400px). Uma camada escura é aplicada por cima automaticamente pra manter o texto legível.</span>
+            </div>
             <div class="field"><label>Taxa de entrega padrão (R$) — usada se nenhum bairro for cadastrado abaixo</label><input id="cfgDeliveryFee" type="number" step="0.01" min="0"></div>
             <h3 style="margin-top:22px;margin-bottom:10px">Taxas de entrega por bairro</h3>
             <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">Se cadastrar pelo menos um bairro aqui, o cliente escolhe o bairro dele no checkout e essa taxa substitui a taxa padrão.</p>
@@ -338,6 +350,7 @@ canvas{max-width:100%;}
               <select id="cfgOpen"><option value="1">Loja aberta</option><option value="0">Loja fechada</option></select>
             </div>
             <div class="field"><label>WhatsApp para receber pedidos (com DDI e DDD, só números)</label><input id="cfgWhatsapp" placeholder="Ex.: 5573999999999"></div>
+            <div class="field"><label>Endereço da loja (mostrado quando o cliente escolhe retirada)</label><input id="cfgStoreAddress" placeholder="Rua, número, bairro"></div>
             <div class="field"><label>Confirmação de pedidos</label>
               <select id="cfgAutoAccept">
                 <option value="1">Aceitar pedidos automaticamente</option>
@@ -732,7 +745,7 @@ function renderReportForMonth(){
       <td>${escapeHtml(o.customerName)}</td>
       <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemsTxt)}</td>
       <td style="font-family:var(--font-mono)">${money(o.total)}</td>
-      <td><span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span></td>
+      <td><span class="status-badge ${o.status}">${statusLabelForOrder(o,o.status)}</span></td>
     </tr>`;
   }).join("") : `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:24px">Nenhum pedido neste mês.</td></tr>`;
 }
@@ -777,6 +790,10 @@ function buildTicketHtml(order, viaLabel, store){
   }).join("");
   const trocoLine = (order.payment==="dinheiro" && order.changeFor)
     ? `<div class="ticket-line">Troco p/ ${money(order.changeFor)} (levar ${money(order.changeAmount)})</div>` : "";
+  const isPickup = order.deliveryType === "retirada";
+  const addressLine = isPickup
+    ? `<div class="ticket-line"><b>RETIRADA NO LOCAL</b></div>`
+    : `<div class="ticket-line">${escapeHtml(order.address)}${order.bairro?" - "+escapeHtml(order.bairro):""}</div>`;
   return `
     <div class="ticket">
       <div class="ticket-via">Via: ${escapeHtml(viaLabel)}</div>
@@ -786,7 +803,7 @@ function buildTicketHtml(order, viaLabel, store){
       <div class="ticket-sep"></div>
       <div class="ticket-line"><b>${escapeHtml(order.customerName)}</b></div>
       <div class="ticket-line">${escapeHtml(order.phone)}</div>
-      <div class="ticket-line">${escapeHtml(order.address)}${order.bairro?" - "+escapeHtml(order.bairro):""}</div>
+      ${addressLine}
       <div class="ticket-sep"></div>
       ${itemsHtml}
       <div class="ticket-sep"></div>
@@ -800,7 +817,11 @@ function buildTicketHtml(order, viaLabel, store){
 function printOrderTickets(order){
   const area = document.getElementById("printArea");
   if(!area || !order) return;
-  const vias = (STATE.config.printCopies && STATE.config.printCopies.length) ? STATE.config.printCopies : ["Via única"];
+  let vias = (STATE.config.printCopies && STATE.config.printCopies.length) ? STATE.config.printCopies.slice() : ["Via única"];
+  if(order.deliveryType === "retirada"){
+    vias = vias.filter(v=>v.toLowerCase().indexOf("entregador") === -1);
+    if(!vias.length) vias = ["Via única"];
+  }
   const store = STATE.config.storeName || "Loja";
   area.innerHTML = vias.map(v=>buildTicketHtml(order, v, store)).join('<div class="ticket-pagebreak"></div>');
   setTimeout(()=>{ window.print(); }, 150);
@@ -834,28 +855,29 @@ function renderOrders(){
     if(o.status==="pendente"){ nextStatus = "preparo"; nextLabel = "Aceitar pedido"; }
     else {
       const nextIdx = STATUS_FLOW.indexOf(o.status);
-      if(nextIdx>=0 && nextIdx<STATUS_FLOW.length-1){ nextStatus = STATUS_FLOW[nextIdx+1]; nextLabel = "Marcar "+STATUS_LABEL[nextStatus].toLowerCase(); }
+      if(nextIdx>=0 && nextIdx<STATUS_FLOW.length-1){ nextStatus = STATUS_FLOW[nextIdx+1]; nextLabel = "Marcar "+statusLabelForOrder(o,nextStatus).toLowerCase(); }
     }
+    const isPickup = o.deliveryType === "retirada";
     return `<div class="card order-card ${o.status==='pendente'?'is-pendente':''}">
       <div class="oc-code">${o.code}</div>
       <div class="oc-main">
-        <div class="oc-name">${escapeHtml(o.customerName)}</div>
+        <div class="oc-name">${escapeHtml(o.customerName)}${isPickup?' <span class="combo-tag" style="background:var(--purple-500);color:#fff">RETIRADA</span>':''}</div>
         <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
         <div class="oc-items">${itemsTxt}</div>
-        <div class="oc-meta" style="margin-top:4px">${escapeHtml(o.address)}</div>
+        <div class="oc-meta" style="margin-top:4px">${isPickup ? "🏪 Retirada no local" : escapeHtml(o.address)}</div>
         ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">💵 Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
         ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">📦 Entregador confirmou a entrega — falta você fechar o pedido</div>` : ""}
-        ${o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+        ${!isPickup && o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
           <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
         </div>` : ""}
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button>
+          ${!isPickup ? `<button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button>` : ""}
           <button class="btn btn-ghost btn-sm" onclick="printOrderById('${o.id}')">🖨️ Imprimir</button>
         </div>
       </div>
       <div class="oc-right">
-        <span class="status-badge ${o.status}">${STATUS_LABEL[o.status]}</span>
+        <span class="status-badge ${o.status}">${statusLabelForOrder(o,o.status)}</span>
         <span class="oc-total">${money(o.total)}</span>
         <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">💬 Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
         <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Excluir pedido">🗑</button>
@@ -866,12 +888,14 @@ function renderOrders(){
   }).join("") : `<div class="empty-state"><span class="badge-diamond"></span><div>Nenhum pedido nessa categoria.</div></div>`;
 }
 function setOrderFilter(f){ orderStatusFilter=f; renderOrders(); }
-function handleImageFileSelect(inputEl, targetFieldId){
+function handleImageFileSelect(inputEl, targetFieldId, maxDim, quality){
+  maxDim = maxDim || 900;
+  quality = quality || 0.82;
   const file = inputEl.files && inputEl.files[0];
   if(!file) return;
   const statusEl = document.getElementById(targetFieldId + "Status");
   if(statusEl) statusEl.textContent = "Otimizando imagem...";
-  compressImageFile(file, 900, 0.82).then(dataUrl=>{
+  compressImageFile(file, maxDim, quality).then(dataUrl=>{
     const field = document.getElementById(targetFieldId);
     if(field) field.value = dataUrl;
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
@@ -1327,6 +1351,9 @@ function renderSettings(){
   document.getElementById("cfgDeliveryFee").value = STATE.config.deliveryFee;
   document.getElementById("cfgOpen").value = STATE.config.isOpen ? "1" : "0";
   document.getElementById("cfgWhatsapp").value = STATE.config.whatsappNumber || "";
+  document.getElementById("cfgStoreAddress").value = STATE.config.storeAddress || "";
+  document.getElementById("cfgLogoImage").value = STATE.config.logoImage || "";
+  document.getElementById("cfgHeaderImage").value = STATE.config.headerImage || "";
   document.getElementById("cfgAutoAccept").value = STATE.config.autoAcceptOrders === false ? "0" : "1";
   document.getElementById("cfgWaServerUrl").value = STATE.config.waServerUrl || "";
   document.getElementById("cfgWaServerKey").value = STATE.config.waServerKey || "";
@@ -1433,6 +1460,9 @@ function saveSettings(){
   STATE.config.deliveryFee = parseFloat(document.getElementById("cfgDeliveryFee").value) || 0;
   STATE.config.isOpen = document.getElementById("cfgOpen").value === "1";
   STATE.config.whatsappNumber = document.getElementById("cfgWhatsapp").value.replace(/\D/g,"");
+  STATE.config.storeAddress = document.getElementById("cfgStoreAddress").value.trim();
+  STATE.config.logoImage = document.getElementById("cfgLogoImage").value.trim();
+  STATE.config.headerImage = document.getElementById("cfgHeaderImage").value.trim();
   STATE.config.autoAcceptOrders = document.getElementById("cfgAutoAccept").value === "1";
   saveConfig();
   showToast("Configurações salvas.");

@@ -35,7 +35,10 @@ let STATE = {
     autoAcceptOrders:true,
     waServerUrl:"",
     waServerKey:"",
-    printCopies:["Cozinha","Entregador","Controle Interno"]
+    printCopies:["Cozinha","Entregador","Controle Interno"],
+    storeAddress:"",
+    logoImage:"",
+    headerImage:""
   },
   products: [],
   combos: [],
@@ -47,6 +50,10 @@ let STATE = {
 
 const STATUS_FLOW = ["preparo","saiu_entrega","entregue"];
 const STATUS_LABEL = {pendente:"Aguardando confirmação", preparo:"Em preparo", saiu_entrega:"Saiu para entrega", entregue:"Entregue", cancelado:"Cancelado"};
+function statusLabelForOrder(order, status){
+  if(status === "saiu_entrega" && order && order.deliveryType === "retirada") return "Pronto para retirada";
+  return STATUS_LABEL[status];
+}
 const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -222,9 +229,13 @@ function buildWhatsAppMessage(order){
   lines.push(`*Novo pedido ${order.code}*`);
   lines.push(`Cliente: ${order.customerName}`);
   lines.push(`Telefone: ${order.phone}`);
-  lines.push(`Endereço: ${order.address}`);
-  if(order.bairro) lines.push(`Bairro: ${order.bairro}`);
-  if(order.location){ const mapsUrl = buildMapsUrl(order.location); if(mapsUrl) lines.push(`📍 Localização: ${mapsUrl}`); }
+  if(order.deliveryType === "retirada"){
+    lines.push(`🏪 RETIRADA NO LOCAL`);
+  } else {
+    lines.push(`Endereço: ${order.address}`);
+    if(order.bairro) lines.push(`Bairro: ${order.bairro}`);
+    if(order.location){ const mapsUrl = buildMapsUrl(order.location); if(mapsUrl) lines.push(`📍 Localização: ${mapsUrl}`); }
+  }
   lines.push("");
   lines.push("Itens:");
   order.items.forEach(it=>{
@@ -327,7 +338,7 @@ function loadLocal(){
     if(raw){
       const parsed = JSON.parse(raw);
       STATE = Object.assign({combos:[], promotions:[], users:[], orderCounter:0}, parsed);
-      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[], printCopies:["Cozinha","Entregador","Controle Interno"]}, STATE.config);
+      STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[], printCopies:["Cozinha","Entregador","Controle Interno"], storeAddress:"", logoImage:"", headerImage:""}, STATE.config);
     }
     else { seedDemoData(); saveLocal(); }
   }catch(e){ seedDemoData(); }
