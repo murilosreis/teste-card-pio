@@ -1,4 +1,4 @@
-// FIREBASE CONFIG — chaves do projeto testcardapio (Firebase Console > Configurações do projeto > SDK setup)
+// FIREBASE CONFIG: chaves do projeto testcardapio (Firebase Console > Configurações do projeto > SDK setup)
 const firebaseConfig = {
   apiKey: "AIzaSyD-vIfcA-KU02w4TP5r3JUTUVeAzsOyjh4",
   authDomain: "testcardapio.firebaseapp.com",
@@ -45,6 +45,7 @@ let STATE = {
   promotions: [],
   orders: [],
   users: [],
+  complements: [],
   orderCounter: 0
 };
 
@@ -61,7 +62,7 @@ function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
 
-/* ---------- termos legais (LGPD) — usado no cardápio e no painel ---------- */
+/* ---------- termos legais (LGPD), usado no cardápio e no painel ---------- */
 function openLegalDoc(kind){
   const store = STATE.config.storeName || "esta loja";
   const wa = (STATE.config.whatsappNumber||"").trim();
@@ -73,7 +74,7 @@ function openLegalDoc(kind){
       <h4>1. Sobre este serviço</h4>
       <p>Este é o cardápio digital da ${escapeHtml(store)}, usado para consulta de produtos e envio de pedidos. A ${escapeHtml(store)} é a responsável pela produção, preço, qualidade e entrega dos itens pedidos.</p>
       <h4>2. Como funciona o pedido</h4>
-      <p>Ao finalizar um pedido, os dados informados (nome, telefone, endereço e, se autorizado, localização) são enviados à loja para preparo e entrega. A confirmação do pedido acontece por mensagem, e o pagamento é feito diretamente com a loja ou o entregador, na forma escolhida (Pix, cartão ou dinheiro) — este site não processa nem armazena dados de pagamento.</p>
+      <p>Ao finalizar um pedido, os dados informados (nome, telefone, endereço e, se autorizado, localização) são enviados à loja para preparo e entrega. A confirmação do pedido acontece por mensagem, e o pagamento é feito diretamente com a loja ou o entregador, na forma escolhida (Pix, cartão ou dinheiro). Este site não processa nem armazena dados de pagamento.</p>
       <h4>3. Responsabilidades do cliente</h4>
       <ul>
         <li>Informar nome, telefone e endereço corretos e atualizados;</li>
@@ -94,7 +95,7 @@ function openLegalDoc(kind){
   } else {
     body = `
       <h4>1. Quem trata seus dados</h4>
-      <p>A ${escapeHtml(store)} é a controladora dos dados coletados neste cardápio, nos termos da Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
+      <p>A ${escapeHtml(store)} é a controladora dos dados coletados neste cardápio, nos termos da Lei Geral de Proteção de Dados (LGPD, Lei nº 13.709/2018).</p>
       <h4>2. Quais dados coletamos</h4>
       <ul>
         <li>Nome e telefone, informados no pedido;</li>
@@ -111,7 +112,7 @@ function openLegalDoc(kind){
       <h4>4. Para que usamos esses dados</h4>
       <p>Exclusivamente para processar, preparar, entregar e acompanhar o seu pedido, e para contato sobre ele (confirmação, status e dúvidas). Não usamos seus dados para publicidade nem os vendemos a terceiros.</p>
       <h4>5. Com quem compartilhamos e transferência internacional</h4>
-      <p>Os dados ficam visíveis para a equipe da ${escapeHtml(store)} responsável pelo preparo e entrega. São armazenados em serviços de nuvem (Firebase/Google Cloud) que, dependendo da configuração da loja, podem manter servidores fora do Brasil — nesse caso, a transferência segue as garantias exigidas pelo art. 33 da LGPD.</p>
+      <p>Os dados ficam visíveis para a equipe da ${escapeHtml(store)} responsável pelo preparo e entrega. São armazenados em serviços de nuvem (Firebase/Google Cloud) que, dependendo da configuração da loja, podem manter servidores fora do Brasil; nesse caso, a transferência segue as garantias exigidas pelo art. 33 da LGPD.</p>
       <h4>6. Segurança da informação (Art. 46 da LGPD)</h4>
       <p>Adotamos medidas técnicas e administrativas para proteger seus dados contra acessos não autorizados e situações acidentais ou ilícitas de destruição, perda, alteração ou vazamento, entre elas:</p>
       <ul>
@@ -239,7 +240,7 @@ function buildWhatsAppMessage(order){
   lines.push("");
   lines.push("Itens:");
   order.items.forEach(it=>{
-    let line = `• ${it.qty}x ${it.name}${it.isCombo ? " (combo)" : ""} — ${money(it.price*it.qty)}`;
+    let line = `• ${it.qty}x ${it.name}${it.isCombo ? " (combo)" : ""}: ${money(it.price*it.qty)}`;
     if(it.choices && it.choices.length) line += `\n   ${it.choices.join(" | ")}`;
     if(it.note) line += `\n   Obs: ${it.note}`;
     lines.push(line);
@@ -250,7 +251,7 @@ function buildWhatsAppMessage(order){
   lines.push(`*Total: ${money(order.total)}*`);
   lines.push(`Pagamento: ${PAY_LABEL[order.payment]||order.payment}`);
   if(order.payment==="dinheiro" && order.changeFor){
-    lines.push(`Troco para ${money(order.changeFor)} — levar ${money(order.changeAmount)} de troco`);
+    lines.push(`Troco para ${money(order.changeFor)}: levar ${money(order.changeAmount)} de troco`);
   }
   return lines.join("\n");
 }
@@ -267,7 +268,7 @@ function normalizeBrazilPhone(raw){
   if(!digits) return "";
   if(digits.length===10 || digits.length===11){ digits = "55" + digits; }
   else if(digits.length===12 || digits.length===13){ /* já parece incluir o DDI */ }
-  else { return ""; } // não tem cara de telefone brasileiro válido — não arrisca mandar pra número aleatório
+  else { return ""; } // não tem cara de telefone brasileiro válido, então não arrisca mandar pra número aleatório
   return digits;
 }
 function buildCustomerStatusMessage(order, status){
@@ -337,7 +338,7 @@ function loadLocal(){
     const raw = localStorage.getItem(LS_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      STATE = Object.assign({combos:[], promotions:[], users:[], orderCounter:0}, parsed);
+      STATE = Object.assign({combos:[], promotions:[], users:[], orderCounter:0, complements:[]}, parsed);
       STATE.config = Object.assign({whatsappNumber:"", autoAcceptOrders:true, deliveryFees:[], printCopies:["Cozinha","Entregador","Controle Interno"], storeAddress:"", logoImage:"", headerImage:""}, STATE.config);
     }
     else { seedDemoData(); saveLocal(); }
@@ -353,7 +354,7 @@ function seedDemoData(){
     {id:uid(), name:"Duplo Bacon", description:"Dois blends 120g, bacon crocante, cheddar e cebola caramelizada.", price:32.9, category:"Lanches", image:"", active:true},
     {id:uid(), name:"Veggie Grelhado", description:"Hambúrguer de grão-de-bico, rúcula, tomate seco e maionese vegana.", price:26.5, category:"Lanches", image:"", active:true},
     {id:uid(), name:"Refrigerante Lata", description:"350ml, gelado.", price:6.0, category:"Bebidas", image:"", active:true},
-    {id:uid(), name:"Suco Natural", description:"Laranja, limão ou maracujá — 500ml.", price:9.0, category:"Bebidas", image:"", active:true},
+    {id:uid(), name:"Suco Natural", description:"Laranja, limão ou maracujá, 500ml.", price:9.0, category:"Bebidas", image:"", active:true},
     {id:uid(), name:"Brownie com Sorvete", description:"Brownie quente com bola de sorvete de creme e calda de chocolate.", price:16.0, category:"Sobremesas", image:"", active:true}
   ];
 }
@@ -377,6 +378,11 @@ function initData(onReady, onOrdersUpdate){
 
     db.collection("combos").onSnapshot(snap=>{
       STATE.combos = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+      onReady && onReady();
+    }, ()=>handleFirestoreDown(onReady));
+
+    db.collection("complements").onSnapshot(snap=>{
+      STATE.complements = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
       onReady && onReady();
     }, ()=>handleFirestoreDown(onReady));
 
@@ -413,7 +419,7 @@ function handleFirestoreDown(onReady){
   if(firestoreUnavailable) return;
   firestoreUnavailable = true;
   useFirebase = false;
-  showToast("Sem conexão com o Firebase — usando modo local.");
+  showToast("Sem conexão com o Firebase. Usando modo local.");
   loadLocal();
   typeof setSyncStatus === "function" && setSyncStatus(false);
   onReady && onReady();
@@ -453,6 +459,7 @@ const productsCrud = makeCrud("products","products");
 const combosCrud = makeCrud("combos","combos");
 const promotionsCrud = makeCrud("promotions","promotions");
 const usersCrud = makeCrud("users","users");
+const complementsCrud = makeCrud("complements","complements");
 
 function saveProduct(p, onDone){ productsCrud.save(p, onDone); }
 function deleteProductData(id, onDone){ productsCrud.remove(id, onDone); }
@@ -462,6 +469,8 @@ function savePromotion(p, onDone){ promotionsCrud.save(p, onDone); }
 function deletePromotionData(id, onDone){ promotionsCrud.remove(id, onDone); }
 function saveUser(u, onDone){ usersCrud.save(u, onDone); }
 function deleteUserData(id, onDone){ usersCrud.remove(id, onDone); }
+function saveComplement(c, onDone){ complementsCrud.save(c, onDone); }
+function deleteComplementData(id, onDone){ complementsCrud.remove(id, onDone); }
 
 function createOrderData(order){
   if(useFirebase){

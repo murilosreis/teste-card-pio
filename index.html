@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sabor Direto — Cardápio</title>
+<title>Sabor Direto | Cardápio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -183,7 +183,7 @@
   <div class="promo-section hidden" id="promoBar">
     <div class="container">
       <div class="promo-heading">
-        <div><h2>Promoções</h2><p>Ofertas por tempo limitado — aproveite antes que acabem</p></div>
+        <div><h2>Promoções</h2><p>Ofertas por tempo limitado. Aproveite antes que acabem</p></div>
       </div>
       <div class="promo-carousel-wrap">
         <button class="promo-nav" onclick="promoScroll(-1)">‹</button>
@@ -222,7 +222,7 @@ let cart = [];
 let activeCategory = "Todos";
 
 /* =====================================================================
-   CARDÁPIO — render
+   CARDÁPIO (render)
 ===================================================================== */
 function applyBranding(){
   const mark = document.getElementById("brandMark");
@@ -377,7 +377,7 @@ function openPromotionDetail(promoId){
 }
 
 /* ---------- ficha de produto / combo ---------- */
-let detailQty = 1, detailProduct = null, detailChoices = {};
+let detailQty = 1, detailProduct = null, detailChoices = {}, detailComplements = [];
 function openItemDetail(id, kind){
   let item = kind==="combo" ? STATE.combos.find(x=>x.id===id) : STATE.products.find(x=>x.id===id);
   if(!item) return;
@@ -388,6 +388,7 @@ function showDetailSheet(item){
   detailProduct = item;
   detailQty = 1;
   detailChoices = {};
+  detailComplements = [];
   (item.choiceGroups||[]).forEach(g=>{ detailChoices[g.id] = []; });
   const includedNames = item.isCombo ? (item.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean) : [];
   const choiceGroupsHtml = (item.choiceGroups||[]).map(g=>{
@@ -406,15 +407,28 @@ function showDetailSheet(item){
       </div>
     </div>`;
   }).join("");
+  const complementOptions = (item.complementIds||[]).map(cid=>{ const c = STATE.complements.find(x=>x.id===cid); return c && c.active!==false ? c : null; }).filter(Boolean);
+  const complementsHtml = complementOptions.length ? `<div class="choice-group">
+    <label class="choice-group-title">Complementos <span class="opt-tag">opcional</span></label>
+    <div class="choice-options">
+      ${complementOptions.map(o=>`
+        <label class="choice-opt">
+          <input type="checkbox" onchange="updateDetailComplement('${o.id}',this.checked)">
+          <span>${escapeHtml(o.name)}</span>
+          <span class="choice-opt-price">+${money(o.price)}</span>
+        </label>`).join("")}
+    </div>
+  </div>` : "";
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       ${item.image ? `<img class="detail-img" src="${escapeAttr(item.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">Sem foto</div>`}
       <div class="detail-body">
         <h3>${escapeHtml(item.name)}</h3>
-        ${item.originalPrice ? `<div class="promo-tag-line">Promoção — de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
+        ${item.originalPrice ? `<div class="promo-tag-line">Promoção: de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
         <div class="desc">${escapeHtml(item.description||"")}</div>
         ${includedNames.length ? `<div class="combo-includes">Inclui: <b>${includedNames.map(escapeHtml).join(", ")}</b></div>` : ""}
         ${choiceGroupsHtml}
+        ${complementsHtml}
         <div class="field" style="margin-top:16px"><label>Observações (opcional)</label><textarea id="detailNote" placeholder="Ex.: sem cebola, sem gelo, ponto da carne..."></textarea></div>
         <div class="qty-row">
           <div class="qty-control">
@@ -438,6 +452,10 @@ function computeDetailUnitPrice(){
       });
     }
   });
+  (detailComplements||[]).forEach(cid=>{
+    const c = STATE.complements.find(x=>x.id===cid);
+    if(c) unit += c.price;
+  });
   return unit;
 }
 function updateDetailChoice(groupId, productId, inputType, checked){
@@ -451,6 +469,12 @@ function updateDetailChoice(groupId, productId, inputType, checked){
   const label = document.getElementById("detailPriceLabel");
   if(label) label.textContent = money(computeDetailUnitPrice() * detailQty);
 }
+function updateDetailComplement(complementId, checked){
+  if(checked){ if(!detailComplements.includes(complementId)) detailComplements.push(complementId); }
+  else { detailComplements = detailComplements.filter(id=>id!==complementId); }
+  const label = document.getElementById("detailPriceLabel");
+  if(label) label.textContent = money(computeDetailUnitPrice() * detailQty);
+}
 function changeDetailQty(d){
   detailQty = Math.max(1, detailQty + d);
   document.getElementById("detailQtyLabel").textContent = detailQty;
@@ -461,7 +485,7 @@ function confirmAddDetail(){
   if(missing){ showToast(`Escolha uma opção em "${missing.label}".`); return; }
   const noteEl = document.getElementById("detailNote");
   const note = noteEl ? noteEl.value.trim() : "";
-  addToCart(detailProduct, detailQty, note, detailChoices);
+  addToCart(detailProduct, detailQty, note, detailChoices, detailComplements);
   closeScrim();
   showToast(`${detailProduct.name} adicionado à sacola`);
 }
@@ -484,7 +508,7 @@ function playCourierAlertSound(){
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(t); osc.stop(t+0.27);
     });
-  }catch(e){ /* navegador pode bloquear áudio sem interação prévia — o alerta visual continua */ }
+  }catch(e){ /* navegador pode bloquear áudio sem interação prévia, o alerta visual continua */ }
 }
 function showCourierAlertOverlay(type, orderId, alertTs){
   playCourierAlertSound();
@@ -673,10 +697,11 @@ function submitTrackingLookup(){
 /* =====================================================================
    CARRINHO
 ===================================================================== */
-function addToCart(item, qty, note, choices){
+function addToCart(item, qty, note, choices, complementIds){
   note = (note||"").trim();
   const isCombo = !!item.isCombo;
   choices = choices || {};
+  complementIds = complementIds || [];
   const choiceLabels = [];
   let extraPrice = 0;
   (item.choiceGroups||[]).forEach(g=>{
@@ -687,6 +712,14 @@ function addToCart(item, qty, note, choices){
     }).filter(Boolean);
     if(pickedNames.length) choiceLabels.push(`${g.label}: ${pickedNames.join(", ")}`);
   });
+  if(complementIds.length){
+    const compNames = complementIds.map(cid=>{
+      const c = STATE.complements.find(x=>x.id===cid);
+      if(c) extraPrice += c.price;
+      return c ? c.name : null;
+    }).filter(Boolean);
+    if(compNames.length) choiceLabels.push(`Complementos: ${compNames.join(", ")}`);
+  }
   const finalPrice = item.price + extraPrice;
   const existing = (!isCombo && !note && !choiceLabels.length) ? cart.find(c=>c.productId===item.id && !c.note && !c.isCombo && (!c.choiceLabels||!c.choiceLabels.length)) : null;
   if(existing){
@@ -809,12 +842,12 @@ function openCheckout(){
           <div class="field"><label>Bairro de entrega</label>
             <select id="chkBairro" onchange="updateCheckoutFee()">
               <option value="">Selecione seu bairro...</option>
-              ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)} — ${money(f.fee)}</option>`).join("")}
+              ${fees.map((f,i)=>`<option value="${i}">${escapeHtml(f.bairro)}, ${money(f.fee)}</option>`).join("")}
             </select>
           </div>` : ""}
         </div>
         <div id="pickupInfo" class="hidden" style="background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;color:var(--ink-soft)">
-          Retire seu pedido em:<br><b>${storeAddr ? escapeHtml(storeAddr) : "Endereço da loja — combine pelo WhatsApp"}</b>
+          Retire seu pedido em:<br><b>${storeAddr ? escapeHtml(storeAddr) : "Endereço da loja: combine pelo WhatsApp"}</b>
         </div>
         <div class="field">
           <label>Forma de pagamento</label>
@@ -826,7 +859,7 @@ function openCheckout(){
         </div>
         <div class="field hidden" id="trocoField">
           <label>Vai pagar com quanto? (pra calcular o troco)</label>
-          <input id="chkTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 — deixe em branco se for o valor exato">
+          <input id="chkTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 (deixe em branco se for o valor exato)">
         </div>
         <div class="sum-row total" style="margin:16px 0"><span>Total a pagar</span><span id="checkoutTotalValue">${money(sub+initialFee)}</span></div>
         <label class="consent-row">
@@ -846,11 +879,11 @@ function requestLocation(){
     pos=>{
       capturedLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
       if(btn){ btn.textContent = "Localização compartilhada"; }
-      showToast("Localização capturada — vai ajudar o motoboy a chegar certinho.");
+      showToast("Localização capturada. Vai ajudar o motoboy a chegar certinho.");
     },
     ()=>{
       if(btn){ btn.textContent = "Compartilhar minha localização (ajuda o motoboy a chegar certinho)"; btn.disabled = false; }
-      showToast("Não consegui pegar sua localização — pode continuar sem ela.");
+      showToast("Não consegui pegar sua localização. Pode continuar sem ela.");
     },
     {enableHighAccuracy:true, timeout:10000}
   );
@@ -923,7 +956,7 @@ function submitOrder(){
   }
 
   // abre a aba do WhatsApp em branco AGORA, ainda dentro do clique do usuário,
-  // para o navegador não bloquear o popup — o endereço é preenchido assim que o pedido for gerado
+  // para o navegador não bloquear o popup, o endereço é preenchido assim que o pedido for gerado
   const waWindow = window.open("", "_blank");
   getNextOrderNumber().then(num=>{
     const code = "#" + String(num).padStart(4,"0");
@@ -962,7 +995,7 @@ function showOrderConfirmation(order, waUrl){
         <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
         <div class="order-code">${order.code}</div>
         <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
-        ${order.deliveryType === "retirada" ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">Retirada no local${STATE.config.storeAddress ? " — " + escapeHtml(STATE.config.storeAddress) : ""}</div>` : ""}
+        ${order.deliveryType === "retirada" ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">Retirada no local${STATE.config.storeAddress ? ": " + escapeHtml(STATE.config.storeAddress) : ""}</div>` : ""}
         ${order.changeFor ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">Troco combinado para ${money(order.changeFor)} (troco de ${money(order.changeAmount)})</div>` : ""}
         ${waUrl ? `<a class="btn btn-gold btn-block" style="margin-top:16px" href="${waUrl}" target="_blank">Enviar pelo WhatsApp</a><div style="font-size:11.5px;color:var(--gray-300);margin-top:6px">Se não abriu sozinho, toque no botão acima para confirmar por lá.</div>` : ""}
         <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openTracking('${order.id}')">Acompanhar meu pedido</button>

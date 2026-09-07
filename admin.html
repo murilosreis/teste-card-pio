@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Painel administrativo — Sabor Direto</title>
+<title>Painel administrativo | Sabor Direto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -130,7 +130,7 @@
 }
 canvas{max-width:100%;}
 
-/* impressão de tickets — invisível na tela, só aparece ao mandar imprimir */
+/* impressão de tickets: invisível na tela, só aparece ao mandar imprimir */
 #printArea{display:none;}
 @media print{
   body *{visibility:hidden;}
@@ -166,7 +166,7 @@ canvas{max-width:100%;}
         <input type="password" id="adminPassInput" placeholder="••••••" onkeydown="if(event.key==='Enter')tryAdminLogin()">
       </div>
       <button class="btn btn-primary btn-block" onclick="tryAdminLogin()">Entrar</button>
-      <p style="font-size:11.5px;color:var(--gray-300);margin-top:18px">Senha mestre inicial: <b>admin123</b> — altere em Configurações.</p>
+      <p style="font-size:11.5px;color:var(--gray-300);margin-top:18px">Senha mestre inicial: <b>admin123</b>. Altere em Configurações.</p>
     </div>
   </div>
 
@@ -183,6 +183,7 @@ canvas{max-width:100%;}
       <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos<span class="nav-alert-dot hidden" id="ordersAlertDot"></span></button>
       <button class="nav-item" data-tab="report" onclick="setAdminTab('report')"><span class="badge-diamond"></span>Relatório</button>
       <button class="nav-item" data-tab="menu" onclick="setAdminTab('menu')"><span class="badge-diamond"></span>Cardápio</button>
+      <button class="nav-item" data-tab="complements" onclick="setAdminTab('complements')"><span class="badge-diamond"></span>Complementos</button>
       <button class="nav-item" data-tab="combos" onclick="setAdminTab('combos')"><span class="badge-diamond"></span>Combos</button>
       <button class="nav-item" data-tab="promotions" onclick="setAdminTab('promotions')"><span class="badge-diamond"></span>Promoções</button>
       <button class="nav-item" data-tab="users" onclick="setAdminTab('users')"><span class="badge-diamond"></span>Usuários</button>
@@ -204,13 +205,13 @@ canvas{max-width:100%;}
         </div>
         <div class="kpi-grid">
           <div class="card kpi-card"><div class="kpi-label">Pedidos hoje</div><div class="kpi-value" id="kpiOrdersToday">0</div><div class="kpi-sub" id="kpiOrdersOpen">0 em aberto</div></div>
-          <div class="card kpi-card"><div class="kpi-label">Faturamento hoje</div><div class="kpi-value mono" id="kpiRevenueToday">R$ 0,00</div><div class="kpi-sub up" id="kpiRevenueVsYesterday">—</div></div>
+          <div class="card kpi-card"><div class="kpi-label">Faturamento hoje</div><div class="kpi-value mono" id="kpiRevenueToday">R$ 0,00</div><div class="kpi-sub up" id="kpiRevenueVsYesterday">-</div></div>
           <div class="card kpi-card"><div class="kpi-label">Ticket médio</div><div class="kpi-value mono" id="kpiAvgTicket">R$ 0,00</div><div class="kpi-sub">hoje</div></div>
           <div class="card kpi-card"><div class="kpi-label">Faturamento (7 dias)</div><div class="kpi-value mono" id="kpiRevenue7d">R$ 0,00</div><div class="kpi-sub" id="kpiOrders7d">0 pedidos</div></div>
         </div>
         <div class="dash-grid">
           <div class="card panel">
-            <h3>Vendas — últimos 7 dias</h3>
+            <h3>Vendas dos últimos 7 dias</h3>
             <canvas id="salesChart" height="180"></canvas>
           </div>
           <div class="card panel">
@@ -280,6 +281,21 @@ canvas{max-width:100%;}
         </div>
       </section>
 
+      <section id="tab-complements" class="hidden">
+        <div class="admin-topbar"><h1>Complementos</h1></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin-bottom:16px;max-width:600px">Cadastre aqui os itens que o cliente pode adicionar num produto (ex.: "Carne extra", "Queijo extra", "Bacon"). Depois de cadastrados, você escolhe quais valem para cada produto na aba Cardápio.</p>
+        <div class="admin-toolbar">
+          <div class="pill" style="background:var(--gray-100);color:var(--ink-soft)" id="complementCountPill">0 complementos</div>
+          <button class="btn btn-primary btn-sm" onclick="openComplementForm()">+ Novo complemento</button>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="prod-table">
+            <thead><tr><th>Complemento</th><th>Preço extra</th><th>Ativo</th><th></th></tr></thead>
+            <tbody id="complementTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="tab-combos" class="hidden">
         <div class="admin-topbar"><h1>Combos</h1></div>
         <div class="admin-toolbar">
@@ -341,7 +357,7 @@ canvas{max-width:100%;}
               <input type="file" accept="image/*" style="margin-top:8px" onchange="handleImageFileSelect(this,'cfgHeaderImage', 1600, 0.8)">
               <span id="cfgHeaderImageStatus" style="font-size:11.5px;color:var(--gray-300);margin-top:4px;display:block">Recomendado: imagem larga, proporção 4:1 (ex.: 1600x400px). Uma camada escura é aplicada por cima automaticamente pra manter o texto legível.</span>
             </div>
-            <div class="field"><label>Taxa de entrega padrão (R$) — usada se nenhum bairro for cadastrado abaixo</label><input id="cfgDeliveryFee" type="number" step="0.01" min="0"></div>
+            <div class="field"><label>Taxa de entrega padrão (R$), usada se nenhum bairro for cadastrado abaixo</label><input id="cfgDeliveryFee" type="number" step="0.01" min="0"></div>
             <h3 style="margin-top:22px;margin-bottom:10px">Taxas de entrega por bairro</h3>
             <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">Se cadastrar pelo menos um bairro aqui, o cliente escolhe o bairro dele no checkout e essa taxa substitui a taxa padrão.</p>
             <div class="cat-manage-list" id="feeManageList"></div>
@@ -363,7 +379,7 @@ canvas{max-width:100%;}
             </div>
             <button class="btn btn-primary" onclick="saveSettings()">Salvar alterações</button>
             <h3 style="margin-top:26px;margin-bottom:10px">Vias de impressão por pedido</h3>
-            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">Sempre que um pedido for aceito, o sistema abre a impressão com uma via para cada nome cadastrado aqui — ex.: Cozinha, Entregador, Controle Interno.</p>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px">Sempre que um pedido for aceito, o sistema abre a impressão com uma via para cada nome cadastrado aqui (ex.: Cozinha, Entregador, Controle Interno).</p>
             <div class="cat-manage-list" id="printCopiesList"></div>
             <div style="display:flex;gap:8px">
               <input id="newPrintCopyInput" placeholder="Nome da via (ex.: Cozinha)" style="flex:1;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:9px">
@@ -385,7 +401,7 @@ canvas{max-width:100%;}
             <div class="field"><label>URL do servidor</label><input id="cfgWaServerUrl" placeholder="https://seu-servidor.up.railway.app"></div>
             <div class="field"><label>Chave de API</label><input id="cfgWaServerKey" type="password" placeholder="A mesma senha definida no .env do servidor"></div>
             <button class="btn btn-ghost" onclick="saveWaServerConfig()">Salvar e testar conexão</button>
-            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:12px"><span id="waServerStatusText">Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual.</span></p>
+            <p style="font-size:12.5px;color:var(--ink-soft);margin-top:12px"><span id="waServerStatusText">Sem servidor configurado. As mensagens continuam abrindo o WhatsApp manual.</span></p>
             <div id="waQrWrap" class="hidden" style="text-align:center;margin-top:14px;padding:16px;background:var(--gray-50);border-radius:12px">
               <img id="waQrImage" style="width:200px;height:200px;border-radius:10px;background:var(--white)" alt="QR code do WhatsApp">
               <p style="font-size:12px;color:var(--ink-soft);margin-top:10px;max-width:260px;margin-left:auto;margin-right:auto">Abra o WhatsApp do número da loja → <b>Aparelhos conectados</b> → <b>Conectar um aparelho</b> e escaneie este código.</p>
@@ -397,20 +413,20 @@ canvas{max-width:100%;}
       <section id="tab-ajuda" class="hidden">
         <div class="admin-topbar"><h1>Como colocar foto nos produtos</h1></div>
         <div class="card panel">
-          <p class="help-intro">Existem duas formas de colocar foto num produto, combo ou promoção. A mais simples é enviar direto do seu celular ou computador — o próprio painel otimiza a imagem sozinho.</p>
+          <p class="help-intro">Existem duas formas de colocar foto num produto, combo ou promoção. A mais simples é enviar direto do seu celular ou computador: o próprio painel otimiza a imagem sozinho.</p>
           <div class="help-steps">
             <div class="help-step">
               <div class="hs-num">1</div>
               <div class="hs-body">
                 <h4>Forma recomendada: enviar direto do aparelho</h4>
-                <p>Ao editar um produto, combo ou promoção, use o campo <code>Ou envie uma foto do dispositivo</code>. Escolha a imagem — o painel redimensiona e comprime ela automaticamente (formato leve, sem perder qualidade visível) antes de salvar. Não precisa de nenhum site externo.</p>
+                <p>Ao editar um produto, combo ou promoção, use o campo <code>Ou envie uma foto do dispositivo</code>. Escolha a imagem: o painel redimensiona e comprime ela automaticamente (formato leve, sem perder qualidade visível) antes de salvar. Não precisa de nenhum site externo.</p>
               </div>
             </div>
             <div class="help-step">
               <div class="hs-num">2</div>
               <div class="hs-body">
                 <h4>Alternativa: colar um link já pronto</h4>
-                <p>Se preferir usar uma imagem que já está hospedada em outro lugar, cole o endereço direto no campo <code>URL da imagem</code>. Um site gratuito pra isso é o <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a> — suba a foto lá, copie o <code>Direct link</code> (link direto da imagem, terminado em <code>.jpg</code> ou <code>.png</code>) e cole aqui.</p>
+                <p>Se preferir usar uma imagem que já está hospedada em outro lugar, cole o endereço direto no campo <code>URL da imagem</code>. Um site gratuito pra isso é o <a href="https://imgbb.com" target="_blank" rel="noopener">imgbb.com</a>: suba a foto lá, copie o <code>Direct link</code> (link direto da imagem, terminado em <code>.jpg</code> ou <code>.png</code>) e cole aqui.</p>
               </div>
             </div>
             <div class="help-step">
@@ -421,7 +437,7 @@ canvas{max-width:100%;}
               </div>
             </div>
           </div>
-          <div class="help-note">Prefira fotos na horizontal, bem iluminadas, com o prato ou item centralizado — ficam melhores no cardápio.</div>
+          <div class="help-note">Prefira fotos na horizontal, bem iluminadas, com o prato ou item centralizado; ficam melhores no cardápio.</div>
         </div>
       </section>
     </div>
@@ -489,7 +505,7 @@ function setSyncStatus(on){
 
 function setAdminTab(tab){
   adminTab = tab;
-  ["overview","orders","menu","combos","promotions","users","settings","ajuda","report"].forEach(t=>{
+  ["overview","orders","menu","complements","combos","promotions","users","settings","ajuda","report"].forEach(t=>{
     document.getElementById("tab-"+t).classList.toggle("hidden", t!==tab);
   });
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.tab===tab));
@@ -524,6 +540,7 @@ function renderAdmin(){
   if(adminTab==="overview") renderOverview();
   if(adminTab==="orders") renderOrders();
   if(adminTab==="menu") renderMenuAdmin();
+  if(adminTab==="complements") renderComplementsAdmin();
   if(adminTab==="combos") renderCombosAdmin();
   if(adminTab==="promotions") renderPromotionsAdmin();
   if(adminTab==="users") renderUsersAdmin();
@@ -538,7 +555,7 @@ function playAlertSound(){
   try{
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     // alarme de 2 tons alternados, repetido 4 vezes, bem mais alto e perceptível
-    const pattern = [1046.5, 784]; // dó agudo / sol — "ding-dong" repetido
+    const pattern = [1046.5, 784]; // dó agudo / sol, "ding-dong" repetido
     const reps = 4;
     for(let r=0; r<reps; r++){
       pattern.forEach((freq, i)=>{
@@ -555,7 +572,7 @@ function playAlertSound(){
         osc.stop(t + 0.24);
       });
     }
-  }catch(e){ /* navegador pode bloquear áudio sem interação prévia — sem problema, o alerta visual continua */ }
+  }catch(e){ /* navegador pode bloquear áudio sem interação prévia, sem problema, o alerta visual continua */ }
 }
 let alertRepeatTimer = null;
 function startAlertRepeat(){
@@ -584,7 +601,7 @@ function checkForCourierDeliveries(){
   if(newlyDelivered.length === 0) return;
   playAlertSound();
   newlyDelivered.forEach(o=>{
-    showToast(`O entregador confirmou a entrega do pedido ${o.code} — falta você fechar o pedido.`);
+    showToast(`O entregador confirmou a entrega do pedido ${o.code}. Falta você fechar o pedido.`);
   });
   if(adminTab === "orders") renderOrders();
 }
@@ -606,9 +623,9 @@ function checkForNewOrders(){
   if(adminTab !== "orders") dot.classList.remove("hidden");
   showToast(freshOrders.length===1 ? `Novo pedido: ${freshOrders[0].code}` : `${freshOrders.length} novos pedidos`);
   if(adminTab === "orders") renderNewOrderBanner();
-  document.title = "Novo pedido — Painel";
+  document.title = "Novo pedido | Painel";
   clearTimeout(window._titleResetTimer);
-  window._titleResetTimer = setTimeout(()=>{ document.title = "Painel administrativo — Sabor Direto"; }, 6000);
+  window._titleResetTimer = setTimeout(()=>{ document.title = "Painel administrativo | Sabor Direto"; }, 6000);
 }
 function renderNewOrderBanner(){
   const wrap = document.getElementById("newOrderBannerWrap");
@@ -885,8 +902,8 @@ function renderOrders(){
         <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
         <div class="oc-items">${itemsTxt}</div>
         <div class="oc-meta" style="margin-top:4px">${isPickup ? "Retirada no local" : escapeHtml(o.address)}</div>
-        ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
-        ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">Entregador confirmou a entrega — falta você fechar o pedido</div>` : ""}
+        ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">Troco para ${money(o.changeFor)}: levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
+        ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">Entregador confirmou a entrega, falta você fechar o pedido</div>` : ""}
         ${!isPickup && o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">Ver no mapa</a>
           <button class="btn btn-ghost btn-sm" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">Copiar link</button>
@@ -919,7 +936,7 @@ function handleImageFileSelect(inputEl, targetFieldId, maxDim, quality){
     const field = document.getElementById(targetFieldId);
     if(field) field.value = dataUrl;
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
-    if(statusEl) statusEl.textContent = `Imagem otimizada (~${kb} KB) — pronta para salvar.`;
+    if(statusEl) statusEl.textContent = `Imagem otimizada (~${kb} KB), pronta para salvar.`;
   }).catch(err=>{
     if(statusEl) statusEl.textContent = "";
     showToast(err.message || "Não consegui processar essa imagem.");
@@ -933,7 +950,7 @@ function copyMapsLink(lat, lng){
   const url = buildMapsUrl({lat, lng});
   if(!url) return;
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(()=>showToast("Link do mapa copiado!")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
+    navigator.clipboard.writeText(url).then(()=>showToast("Link do mapa copiado!")).catch(()=>showToast("Não consegui copiar. Copie manualmente."));
   } else {
     showToast("Seu navegador não permite copiar automaticamente.");
   }
@@ -941,11 +958,11 @@ function copyMapsLink(lat, lng){
 function copyDeliveryLink(orderId){
   const order = STATE.orders.find(o=>o.id===orderId);
   const url = location.origin + location.pathname.replace(/admin\.html$/, "entrega.html") + "?id=" + orderId;
-  const shareText = order ? `Entrega do pedido ${order.code} — ${order.customerName}` : "Link de entrega";
+  const shareText = order ? `Entrega do pedido ${order.code}: ${order.customerName}` : "Link de entrega";
   if(navigator.share){
-    navigator.share({title: "Link do entregador", text: shareText, url}).catch(()=>{ /* usuário cancelou o compartilhamento — sem problema */ });
+    navigator.share({title: "Link do entregador", text: shareText, url}).catch(()=>{ /* usuário cancelou o compartilhamento, sem problema */ });
   } else if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(()=>showToast("Link do entregador copiado! Envie pelo WhatsApp.")).catch(()=>showToast("Não consegui copiar — copie manualmente."));
+    navigator.clipboard.writeText(url).then(()=>showToast("Link do entregador copiado! Envie pelo WhatsApp.")).catch(()=>showToast("Não consegui copiar. Copie manualmente."));
   } else {
     showToast("Seu navegador não permite compartilhar ou copiar automaticamente.");
   }
@@ -974,7 +991,7 @@ function renderAdminChatContent(order){
   const draftInput = document.getElementById("adminChatInput");
   const draft = draftInput ? draftInput.value : "";
   wrap.innerHTML = `
-    <div class="cart-head"><h3>Conversa — ${order.code}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+    <div class="cart-head"><h3>Conversa: ${order.code}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
     <div class="detail-body">
       <div class="oc-meta" style="margin-bottom:10px">${escapeHtml(order.customerName)} · ${escapeHtml(order.phone)}</div>
       <div class="chat-thread" id="adminChatThread">${messagesHtml}</div>
@@ -1043,7 +1060,7 @@ function advanceOrderStatus(orderId, status){
       sendViaWhatsAppServer(order.phone, message).then(ok=>{
         if(ok){ showToast("Mensagem enviada automaticamente pro cliente."); }
         else {
-          showToast("Servidor indisponível — abrindo o WhatsApp manual.");
+          showToast("Servidor indisponível. Abrindo o WhatsApp manual.");
           const waUrl = buildCustomerStatusWhatsAppUrl(order, status);
           if(waUrl) window.open(waUrl, "_blank");
         }
@@ -1057,6 +1074,54 @@ function advanceOrderStatus(orderId, status){
 }
 
 /* ---------- cardápio (produtos) ---------- */
+/* ---------- complementos ---------- */
+function renderComplementsAdmin(){
+  const list = STATE.complements || [];
+  document.getElementById("complementCountPill").textContent = list.length + (list.length===1?" complemento":" complementos");
+  document.getElementById("complementTableBody").innerHTML = list.map(c=>`
+    <tr>
+      <td><b>${escapeHtml(c.name)}</b></td>
+      <td style="font-family:var(--font-mono)">${money(c.price)}</td>
+      <td><button class="toggle ${c.active?'on':''}" onclick="toggleComplementActive('${c.id}')"></button></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openComplementForm('${c.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteComplement('${c.id}')">Excluir</button>
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum complemento cadastrado ainda.</td></tr>`;
+}
+function toggleComplementActive(id){
+  const c = STATE.complements.find(x=>x.id===id);
+  if(!c) return;
+  c.active = !c.active;
+  saveComplement(c, renderComplementsAdmin);
+}
+function deleteComplement(id){
+  if(!confirm("Excluir este complemento? Ele será removido dos produtos que o usam.")) return;
+  deleteComplementData(id, renderComplementsAdmin);
+}
+function openComplementForm(id){
+  const editing = id ? STATE.complements.find(x=>x.id===id) : null;
+  const c = editing || {id: uid(), name:"", price:"", active:true};
+  openScrim(`
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="cart-head"><h3>${editing?"Editar complemento":"Novo complemento"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
+      <div class="detail-body">
+        <div class="field"><label>Nome</label><input id="cpName" value="${escapeAttr(c.name)}" placeholder="Ex.: Carne extra, Queijo extra, Bacon"></div>
+        <div class="field"><label>Preço extra (R$)</label><input id="cpPrice" type="number" step="0.01" min="0" value="${c.price}"></div>
+        <button class="btn btn-primary btn-block" onclick="submitComplementForm('${c.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar complemento"}</button>
+      </div>
+    </div>`);
+}
+function submitComplementForm(id, editing){
+  const name = document.getElementById("cpName").value.trim();
+  const price = parseFloat(document.getElementById("cpPrice").value);
+  if(!name || isNaN(price)){ showToast("Preencha nome e preço."); return; }
+  const existing = editing ? STATE.complements.find(x=>x.id===id) : null;
+  const complement = {id, name, price, active: existing ? existing.active : true};
+  saveComplement(complement, ()=>{ closeScrim(); showToast(editing ? "Complemento atualizado." : "Complemento adicionado."); renderComplementsAdmin(); });
+}
+
 function renderMenuAdmin(){
   document.getElementById("catManageList").innerHTML = STATE.config.categories.map(c=>
     `<div class="cat-manage-item">${escapeHtml(c)}<button onclick="removeCategory('${escapeAttr(c)}')">✕</button></div>`
@@ -1105,7 +1170,8 @@ function removeCategory(c){
 
 function openProductForm(id){
   const editing = id ? STATE.products.find(x=>x.id===id) : null;
-  const p = editing || {id: uid(), name:"", description:"", price:"", category: STATE.config.categories[0]||"", image:"", active:true};
+  const p = editing || {id: uid(), name:"", description:"", price:"", category: STATE.config.categories[0]||"", image:"", active:true, complementIds:[]};
+  const hasComplements = (p.complementIds && p.complementIds.length) > 0;
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="cart-head"><h3>${editing?"Editar produto":"Novo produto"}</h3><button class="close-x" onclick="closeScrim()">✕</button></div>
@@ -1118,6 +1184,20 @@ function openProductForm(id){
         </div>
         <div class="field"><label>URL da imagem (opcional)</label><input id="pfImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
         <div class="field"><label>Ou envie uma foto do dispositivo (otimizada automaticamente)</label><input type="file" accept="image/*" onchange="handleImageFileSelect(this,'pfImage')"><span id="pfImageStatus" style="font-size:12px;color:var(--ink-soft)"></span></div>
+        <div class="field">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="pfHasComplements" ${hasComplements?'checked':''} onchange="document.getElementById('pfComplementsWrap').classList.toggle('hidden', !this.checked)">
+            Este produto tem complementos?
+          </label>
+        </div>
+        <div class="field ${hasComplements?'':'hidden'}" id="pfComplementsWrap">
+          <label>Complementos disponíveis para este produto</label>
+          <div class="check-list">
+            ${STATE.complements && STATE.complements.length ? STATE.complements.map(c=>`
+              <label><input type="checkbox" value="${c.id}" ${(p.complementIds||[]).includes(c.id)?'checked':''} class="pf-complement-check"> ${escapeHtml(c.name)} (${money(c.price)})</label>
+            `).join("") : `<span style="font-size:12.5px;color:var(--ink-soft)">Cadastre complementos primeiro na aba Complementos.</span>`}
+          </div>
+        </div>
         <button class="btn btn-primary btn-block" onclick="submitProductForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Adicionar produto"}</button>
       </div>
     </div>`);
@@ -1128,9 +1208,11 @@ function submitProductForm(id, editing){
   const price = parseFloat(document.getElementById("pfPrice").value);
   const category = document.getElementById("pfCategory").value;
   const image = document.getElementById("pfImage").value.trim();
+  const hasComplements = document.getElementById("pfHasComplements").checked;
+  const complementIds = hasComplements ? [...document.querySelectorAll(".pf-complement-check:checked")].map(el=>el.value) : [];
   if(!name || isNaN(price)){ showToast("Preencha nome e preço."); return; }
   const existing = editing ? STATE.products.find(x=>x.id===id) : null;
-  const product = {id, name, description, price, category, image, active: existing ? existing.active : true};
+  const product = {id, name, description, price, category, image, complementIds, active: existing ? existing.active : true};
   saveProduct(product, ()=>{ closeScrim(); showToast(editing ? "Produto atualizado." : "Produto adicionado."); renderMenuAdmin(); });
 }
 
@@ -1142,7 +1224,7 @@ function renderCombosAdmin(){
     return `<tr>
       <td>${c.image?`<img class="prod-thumb" src="${escapeAttr(c.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:10px;font-weight:700">S/ FOTO</div>`}</td>
       <td><b>${escapeHtml(c.name)}</b></td>
-      <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemNames.join(", ")||"—")}</td>
+      <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemNames.join(", ")||"-")}</td>
       <td style="font-family:var(--font-mono)">${money(c.price)}</td>
       <td><button class="toggle ${c.active?'on':''}" onclick="toggleComboActive('${c.id}')"></button></td>
       <td>
@@ -1184,7 +1266,7 @@ function openComboForm(id){
         </div>
         <div class="field">
           <label>Grupos de escolha do cliente (opcional)</label>
-          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5">Ex.: "Escolha o refrigerante" com as opções de lata; ou "Quer molho?" com ketchup e maionese. As opções vêm dos produtos já cadastrados — de qualquer categoria.</p>
+          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5">Ex.: "Escolha o refrigerante" com as opções de lata; ou "Quer molho?" com ketchup e maionese. As opções vêm dos produtos já cadastrados, de qualquer categoria.</p>
           <div id="comboChoiceGroupsList"></div>
           <button type="button" class="btn btn-ghost btn-sm" onclick="addChoiceGroup()">+ Adicionar grupo de escolha</button>
         </div>
@@ -1259,7 +1341,7 @@ function renderPromotionsAdmin(){
     return `<tr>
       <td><b>${escapeHtml(p.title)}</b></td>
       <td>${base ? escapeHtml(base.name) + (p.refType==='combo'?' (combo)':'') : '<span style="color:var(--red)">item removido</span>'}</td>
-      <td style="font-family:var(--font-mono)">${p.price!==null && p.price!==undefined && p.price!=="" ? money(p.price) : '—'}</td>
+      <td style="font-family:var(--font-mono)">${p.price!==null && p.price!==undefined && p.price!=="" ? money(p.price) : '-'}</td>
       <td>${p.endDate ? formatDateBR(p.endDate) : 'sem prazo'} ${expired?'<span class="expired-tag">Expirada</span>':''}</td>
       <td><button class="toggle ${p.active?'on':''}" onclick="togglePromotionActive('${p.id}')"></button></td>
       <td>
@@ -1297,9 +1379,9 @@ function openPromotionForm(id){
             ${allItems.map(it=>`<option value="${it.type}|${it.id}" ${p.refType===it.type && p.refId===it.id ? 'selected':''}>${escapeHtml(it.label)}</option>`).join("")}
           </select>
         </div>
-        <div class="field"><label>Preço promocional (R$) — opcional, deixe em branco para manter o preço normal só em destaque</label><input id="pmPrice" type="number" step="0.01" min="0" value="${p.price ?? ''}"></div>
+        <div class="field"><label>Preço promocional (R$), opcional. Deixe em branco para manter o preço normal só em destaque</label><input id="pmPrice" type="number" step="0.01" min="0" value="${p.price ?? ''}"></div>
         <div class="field"><label>Data de término da promoção</label><input id="pmEndDate" type="date" value="${p.endDate||''}"></div>
-        <div class="field"><label>Imagem (opcional — se vazio, usa a imagem do item)</label><input id="pmImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
+        <div class="field"><label>Imagem (opcional, se vazio usa a imagem do item)</label><input id="pmImage" value="${escapeAttr(p.image||"")}" placeholder="https://..."></div>
         <div class="field"><label>Ou envie uma foto do dispositivo (otimizada automaticamente)</label><input type="file" accept="image/*" onchange="handleImageFileSelect(this,'pmImage')"><span id="pmImageStatus" style="font-size:12px;color:var(--ink-soft)"></span></div>
         <button class="btn btn-primary btn-block" onclick="submitPromotionForm('${p.id}', ${!!editing})">${editing?"Salvar alterações":"Criar promoção"}</button>
       </div>
@@ -1385,7 +1467,7 @@ function renderPrintCopiesList(){
   const copies = STATE.config.printCopies || [];
   document.getElementById("printCopiesList").innerHTML = copies.map((v,i)=>
     `<div class="cat-manage-item">${escapeHtml(v)}<button onclick="removePrintCopy(${i})">✕</button></div>`
-  ).join("") || `<span style="font-size:13px;color:var(--ink-soft)">Nenhuma via cadastrada — será impressa 1 via única.</span>`;
+  ).join("") || `<span style="font-size:13px;color:var(--ink-soft)">Nenhuma via cadastrada. Será impressa 1 via única.</span>`;
 }
 function addPrintCopy(){
   const input = document.getElementById("newPrintCopyInput");
@@ -1406,7 +1488,7 @@ function saveWaServerConfig(){
   STATE.config.waServerUrl = document.getElementById("cfgWaServerUrl").value.trim();
   STATE.config.waServerKey = document.getElementById("cfgWaServerKey").value.trim();
   saveConfig();
-  showToast("Configuração salva — verificando conexão...");
+  showToast("Configuração salva. Verificando conexão...");
   refreshWaServerStatus();
 }
 let waStatusPollTimer = null;
@@ -1416,7 +1498,7 @@ function refreshWaServerStatus(){
   const qrWrap = document.getElementById("waQrWrap");
   if(!label) return;
   if(!(STATE.config.waServerUrl||"").trim()){
-    label.textContent = "Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual.";
+    label.textContent = "Sem servidor configurado. As mensagens continuam abrindo o WhatsApp manual.";
     qrWrap.classList.add("hidden");
     return;
   }
@@ -1430,11 +1512,11 @@ function pollWaServerStatus(){
   if(!label) return;
   checkWhatsAppServerStatus().then(status=>{
     const map = {
-      conectado: "Conectado — as mensagens de status saem automaticamente.",
+      conectado: "Conectado. As mensagens de status saem automaticamente.",
       aguardando_leitura_qr: "Escaneie o QR code abaixo com o WhatsApp da loja.",
       desconectado: "Servidor no ar, mas o WhatsApp está desconectado no momento.",
-      erro_conexao: "Não consegui falar com o servidor — confira a URL.",
-      nao_configurado: "Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual."
+      erro_conexao: "Não consegui falar com o servidor. Confira a URL.",
+      nao_configurado: "Sem servidor configurado. As mensagens continuam abrindo o WhatsApp manual."
     };
     label.textContent = map[status] || "Status desconhecido.";
     if(status === "aguardando_leitura_qr"){
@@ -1455,8 +1537,8 @@ function pollWaServerStatus(){
 function renderFeeManageList(){
   const fees = STATE.config.deliveryFees || [];
   document.getElementById("feeManageList").innerHTML = fees.map((f,i)=>
-    `<div class="cat-manage-item">${escapeHtml(f.bairro)} — ${money(f.fee)}<button onclick="removeDeliveryFee(${i})">✕</button></div>`
-  ).join("") || `<span style="font-size:13px;color:var(--ink-soft)">Nenhum bairro cadastrado — será usada a taxa padrão.</span>`;
+    `<div class="cat-manage-item">${escapeHtml(f.bairro)}, ${money(f.fee)}<button onclick="removeDeliveryFee(${i})">✕</button></div>`
+  ).join("") || `<span style="font-size:13px;color:var(--ink-soft)">Nenhum bairro cadastrado. Será usada a taxa padrão.</span>`;
 }
 function addDeliveryFee(){
   const bairroEl = document.getElementById("newFeeBairro");
