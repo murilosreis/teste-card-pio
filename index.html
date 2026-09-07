@@ -80,16 +80,7 @@
 .detail-img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--gray-100);}
 .detail-body h3{font-size:20px;margin-bottom:8px;}
 .detail-body .desc{color:var(--ink-soft);font-size:14.5px;line-height:1.55;margin-bottom:10px;}
-.combo-includes{font-size:13px;color:var(--ink-soft);background:var(--gray-50);padding:10px 12px;border-radius:10px;margin-bottom:14px;}
-.choice-group{margin-top:16px;padding-top:14px;border-top:1px solid var(--gray-100);}
-.choice-group-title{font-size:13.5px;font-weight:700;display:block;margin-bottom:8px;}
-.req-tag{font-size:10px;font-weight:700;color:var(--red);background:var(--red-100);padding:2px 7px;border-radius:6px;vertical-align:middle;}
-.opt-tag{font-size:10px;font-weight:700;color:var(--ink-soft);background:var(--gray-100);padding:2px 7px;border-radius:6px;vertical-align:middle;}
-.choice-options{display:flex;flex-direction:column;gap:2px;}
-.choice-opt{display:flex;align-items:center;gap:10px;padding:8px 4px;font-size:13.5px;cursor:pointer;}
-.choice-opt input{flex-shrink:0;}
-.choice-opt span:first-of-type{flex:1;}
-.choice-opt-price{font-family:var(--font-mono);color:var(--purple-700);font-size:12px;font-weight:600;}
+
 .promo-tag-line{color:var(--red);font-weight:700;font-size:12.5px;margin-bottom:10px;}
 .qty-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .qty-control{display:flex;align-items:center;gap:14px;background:var(--gray-100);border-radius:12px;padding:6px 8px;}
@@ -281,28 +272,32 @@ function comboSectionHtml(combos){
 function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badge-diamond"></span><div>${escapeHtml(msg)}</div></div>`; }
 
 function productCardHtml(p){
-  return `<div class="product-card" onclick="openItemDetail('${p.id}','product')">
+  const hasOptions = (p.complementIds && p.complementIds.length > 0);
+  return `<div class="product-card" style="position:relative" onclick="quickAdd('${p.id}')">
+    ${hasOptions ? `<button class="customize-btn" onclick="event.stopPropagation();openItemDetail('${p.id}','product')">Personalizar</button>` : ""}
     ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(p.name)}</div>
       <div class="product-desc">${escapeHtml(p.description||"")}</div>
       <div class="product-foot">
         <span class="product-price">${money(p.price)}</span>
-        <button class="add-btn" onclick="event.stopPropagation();quickAdd('${p.id}')">+</button>
+        <button class="add-btn">+</button>
       </div>
     </div>
   </div>`;
 }
 function comboCardHtml(c){
   const hasRequiredChoice = (c.choiceGroups||[]).some(g=>g.required && g.productIds && g.productIds.length);
-  return `<div class="product-card" onclick="openItemDetail('${c.id}','combo')">
+  const hasAnyChoice = (c.choiceGroups||[]).some(g=>g.productIds && g.productIds.length);
+  return `<div class="product-card" style="position:relative" onclick="${hasRequiredChoice ? `openItemDetail('${c.id}','combo')` : `quickAddCombo('${c.id}')`}">
+    ${(!hasRequiredChoice && hasAnyChoice) ? `<button class="customize-btn" onclick="event.stopPropagation();openItemDetail('${c.id}','combo')">Personalizar</button>` : ""}
     ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(c.name)}<span class="combo-tag">Combo</span></div>
       <div class="product-desc">${escapeHtml(c.description||"")}</div>
       <div class="product-foot">
         <span class="product-price">${money(c.price)}</span>
-        ${hasRequiredChoice ? "" : `<button class="add-btn" onclick="event.stopPropagation();quickAddCombo('${c.id}')">+</button>`}
+        <button class="add-btn">+</button>
       </div>
     </div>
   </div>`;
