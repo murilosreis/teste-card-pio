@@ -230,11 +230,11 @@ function buildWhatsAppMessage(order){
   lines.push(`Cliente: ${order.customerName}`);
   lines.push(`Telefone: ${order.phone}`);
   if(order.deliveryType === "retirada"){
-    lines.push(`🏪 RETIRADA NO LOCAL`);
+    lines.push(`RETIRADA NO LOCAL`);
   } else {
     lines.push(`Endereço: ${order.address}`);
     if(order.bairro) lines.push(`Bairro: ${order.bairro}`);
-    if(order.location){ const mapsUrl = buildMapsUrl(order.location); if(mapsUrl) lines.push(`📍 Localização: ${mapsUrl}`); }
+    if(order.location){ const mapsUrl = buildMapsUrl(order.location); if(mapsUrl) lines.push(`Localização: ${mapsUrl}`); }
   }
   lines.push("");
   lines.push("Itens:");
@@ -250,7 +250,7 @@ function buildWhatsAppMessage(order){
   lines.push(`*Total: ${money(order.total)}*`);
   lines.push(`Pagamento: ${PAY_LABEL[order.payment]||order.payment}`);
   if(order.payment==="dinheiro" && order.changeFor){
-    lines.push(`💵 Troco para ${money(order.changeFor)} — levar ${money(order.changeAmount)} de troco`);
+    lines.push(`Troco para ${money(order.changeFor)} — levar ${money(order.changeAmount)} de troco`);
   }
   return lines.join("\n");
 }

@@ -17,6 +17,8 @@
 .admin-login .login-card{max-width:380px;width:100%;padding:36px 30px;text-align:center;}
 .admin-login .mark-big{width:56px;height:56px;background:var(--gold-500);transform:rotate(45deg);border-radius:8px;margin:0 auto 22px;position:relative;}
 .admin-login .mark-big::after{content:"";position:absolute;inset:11px;background:var(--purple-900);border-radius:3px;}
+.admin-login .mark-big.custom-logo{transform:none;border-radius:12px;background-size:cover;background-position:center;background-color:var(--white);}
+.admin-login .mark-big.custom-logo::after{display:none;}
 .admin-login h2{font-size:20px;margin-bottom:6px;}
 .admin-login p{font-size:13.5px;color:var(--ink-soft);margin-bottom:22px;}
 
@@ -25,6 +27,8 @@
 .admin-sidebar .brand{padding:6px 8px 6px;display:flex;align-items:center;}
 .admin-sidebar .mark{width:30px;height:30px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
 .admin-sidebar .mark::after{content:"";position:absolute;inset:6px;background:var(--purple-900);border-radius:2px;}
+.admin-sidebar .mark.custom-logo{transform:none;border-radius:8px;background-size:cover;background-position:center;background-color:var(--white);}
+.admin-sidebar .mark.custom-logo::after{display:none;}
 .admin-sidebar .brand-name{font-size:16px;color:var(--white);font-weight:700;margin-left:10px;}
 .logged-as{font-size:11.5px;color:var(--gray-300);padding:0 8px 16px;}
 .nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;color:var(--gray-300);font-size:14px;font-weight:600;margin-bottom:2px;width:100%;text-align:left;position:relative;}
@@ -150,7 +154,7 @@ canvas{max-width:100%;}
 
   <div class="admin-login" id="adminLoginScreen">
     <div class="card login-card">
-      <div class="mark-big"></div>
+      <div class="mark-big" id="loginMarkBig"></div>
       <h2>Painel administrativo</h2>
       <p>Entre com seu nome de usuário e senha, ou só a senha mestre.</p>
       <div class="field" style="text-align:left">
@@ -173,7 +177,7 @@ canvas{max-width:100%;}
       <span></span>
     </div>
     <aside class="admin-sidebar" id="adminSidebar">
-      <div class="brand"><span class="mark"></span><span class="brand-name" id="storeNameLabelAdmin">Sabor Direto</span></div>
+      <div class="brand"><span class="mark" id="brandMarkAdmin"></span><span class="brand-name" id="storeNameLabelAdmin">Sabor Direto</span></div>
       <div class="logged-as" id="loggedAsLabel">Logado como Administrador</div>
       <button class="nav-item" data-tab="overview" onclick="setAdminTab('overview')"><span class="badge-diamond"></span>Visão geral</button>
       <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos<span class="nav-alert-dot hidden" id="ordersAlertDot"></span></button>
@@ -497,7 +501,23 @@ function setAdminTab(tab){
   renderAdmin();
 }
 
+function applyAdminLogo(){
+  const logoUrl = STATE.config.logoImage;
+  const loginMark = document.getElementById("loginMarkBig");
+  const sidebarMark = document.getElementById("brandMarkAdmin");
+  [loginMark, sidebarMark].forEach(mark=>{
+    if(!mark) return;
+    if(logoUrl){
+      mark.classList.add("custom-logo");
+      mark.style.backgroundImage = `url('${logoUrl.replace(/'/g,"%27")}')`;
+    } else {
+      mark.classList.remove("custom-logo");
+      mark.style.backgroundImage = "";
+    }
+  });
+}
 function renderAdmin(){
+  applyAdminLogo();
   if(document.getElementById("adminShell").classList.contains("hidden")) return;
   setSyncStatus(useFirebase && !firestoreUnavailable);
   document.getElementById("storeNameLabelAdmin").textContent = STATE.config.storeName;
@@ -564,7 +584,7 @@ function checkForCourierDeliveries(){
   if(newlyDelivered.length === 0) return;
   playAlertSound();
   newlyDelivered.forEach(o=>{
-    showToast(`📦 O entregador confirmou a entrega do pedido ${o.code} — falta você fechar o pedido.`);
+    showToast(`O entregador confirmou a entrega do pedido ${o.code} — falta você fechar o pedido.`);
   });
   if(adminTab === "orders") renderOrders();
 }
@@ -584,9 +604,9 @@ function checkForNewOrders(){
   startAlertRepeat();
   const dot = document.getElementById("ordersAlertDot");
   if(adminTab !== "orders") dot.classList.remove("hidden");
-  showToast(freshOrders.length===1 ? `🔔 Novo pedido: ${freshOrders[0].code}` : `🔔 ${freshOrders.length} novos pedidos`);
+  showToast(freshOrders.length===1 ? `Novo pedido: ${freshOrders[0].code}` : `${freshOrders.length} novos pedidos`);
   if(adminTab === "orders") renderNewOrderBanner();
-  document.title = "🔔 Novo pedido — Painel";
+  document.title = "Novo pedido — Painel";
   clearTimeout(window._titleResetTimer);
   window._titleResetTimer = setTimeout(()=>{ document.title = "Painel administrativo — Sabor Direto"; }, 6000);
 }
@@ -595,7 +615,7 @@ function renderNewOrderBanner(){
   if(!wrap) return;
   if(alertedOrderIds.size===0){ wrap.innerHTML=""; return; }
   wrap.innerHTML = `<div class="new-order-banner">
-    <span>🔔 <b>${alertedOrderIds.size}</b> ${alertedOrderIds.size===1?'novo pedido chegou':'novos pedidos chegaram'}</span>
+    <span><b>${alertedOrderIds.size}</b> ${alertedOrderIds.size===1?'novo pedido chegou':'novos pedidos chegaram'}</span>
     <button class="btn btn-block" style="background:rgba(255,255,255,.2);color:#fff;width:auto;padding:8px 14px" onclick="dismissNewOrderBanner()">OK</button>
   </div>`;
 }
@@ -864,23 +884,23 @@ function renderOrders(){
         <div class="oc-name">${escapeHtml(o.customerName)}${isPickup?' <span class="combo-tag" style="background:var(--purple-500);color:#fff">RETIRADA</span>':''}</div>
         <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
         <div class="oc-items">${itemsTxt}</div>
-        <div class="oc-meta" style="margin-top:4px">${isPickup ? "🏪 Retirada no local" : escapeHtml(o.address)}</div>
-        ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">💵 Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
-        ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">📦 Entregador confirmou a entrega — falta você fechar o pedido</div>` : ""}
+        <div class="oc-meta" style="margin-top:4px">${isPickup ? "Retirada no local" : escapeHtml(o.address)}</div>
+        ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">Troco para ${money(o.changeFor)} — levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
+        ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">Entregador confirmou a entrega — falta você fechar o pedido</div>` : ""}
         ${!isPickup && o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
-          <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">📍 Ver no mapa</a>
-          <button class="icon-btn" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">🔗</button>
+          <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">Ver no mapa</a>
+          <button class="btn btn-ghost btn-sm" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">Copiar link</button>
         </div>` : ""}
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-          ${!isPickup ? `<button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">🔔 Compartilhar com entregador</button>` : ""}
-          <button class="btn btn-ghost btn-sm" onclick="printOrderById('${o.id}')">🖨️ Imprimir</button>
+          ${!isPickup && o.status==="saiu_entrega" ? `<button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">Compartilhar com entregador</button>` : ""}
+          <button class="btn btn-ghost btn-sm" onclick="printOrderById('${o.id}')">Imprimir</button>
         </div>
       </div>
       <div class="oc-right">
         <span class="status-badge ${o.status}">${statusLabelForOrder(o,o.status)}</span>
         <span class="oc-total">${money(o.total)}</span>
-        <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">💬 Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
-        <button class="icon-btn danger" onclick="deleteOrder('${o.id}')" title="Excluir pedido">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="openOrderChat('${o.id}')">Mensagens${(o.messages&&o.messages.length)?` (${o.messages.length})`:""}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteOrder('${o.id}')" title="Excluir pedido">Excluir</button>
         ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="confirmAdvanceOrderStatus('${o.id}','${nextStatus}','${escapeAttr(nextLabel)}')">${nextLabel}</button>` : ""}
         ${o.status!=="entregue" && o.status!=="cancelado" ? `<button class="btn btn-ghost btn-sm" onclick="confirmCancelOrder('${o.id}')">Cancelar</button>` : ""}
       </div>
@@ -899,7 +919,7 @@ function handleImageFileSelect(inputEl, targetFieldId, maxDim, quality){
     const field = document.getElementById(targetFieldId);
     if(field) field.value = dataUrl;
     const kb = Math.round(dataUrl.length * 0.75 / 1024);
-    if(statusEl) statusEl.textContent = `✅ Imagem otimizada (~${kb} KB) — pronta para salvar.`;
+    if(statusEl) statusEl.textContent = `Imagem otimizada (~${kb} KB) — pronta para salvar.`;
   }).catch(err=>{
     if(statusEl) statusEl.textContent = "";
     showToast(err.message || "Não consegui processar essa imagem.");
@@ -1044,14 +1064,14 @@ function renderMenuAdmin(){
   document.getElementById("prodCountPill").textContent = STATE.products.length + (STATE.products.length===1?" produto":" produtos");
   document.getElementById("prodTableBody").innerHTML = STATE.products.map(p=>`
     <tr>
-      <td>${p.image?`<img class="prod-thumb" src="${escapeAttr(p.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍽️</div>`}</td>
+      <td>${p.image?`<img class="prod-thumb" src="${escapeAttr(p.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:10px;font-weight:700">S/ FOTO</div>`}</td>
       <td><b>${escapeHtml(p.name)}</b></td>
       <td>${escapeHtml(p.category)}</td>
       <td style="font-family:var(--font-mono)">${money(p.price)}</td>
       <td><button class="toggle ${p.active?'on':''}" onclick="toggleProductActive('${p.id}')"></button></td>
       <td>
-        <button class="icon-btn" onclick="openProductForm('${p.id}')">✎</button>
-        <button class="icon-btn danger" onclick="deleteProduct('${p.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="openProductForm('${p.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">Excluir</button>
       </td>
     </tr>
   `).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum produto cadastrado ainda.</td></tr>`;
@@ -1120,14 +1140,14 @@ function renderCombosAdmin(){
   document.getElementById("comboTableBody").innerHTML = STATE.combos.map(c=>{
     const itemNames = (c.productIds||[]).map(pid=>{ const p=STATE.products.find(x=>x.id===pid); return p?p.name:null; }).filter(Boolean);
     return `<tr>
-      <td>${c.image?`<img class="prod-thumb" src="${escapeAttr(c.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300)">🍔</div>`}</td>
+      <td>${c.image?`<img class="prod-thumb" src="${escapeAttr(c.image)}">`:`<div class="prod-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:10px;font-weight:700">S/ FOTO</div>`}</td>
       <td><b>${escapeHtml(c.name)}</b></td>
       <td style="font-size:12.5px;color:var(--ink-soft)">${escapeHtml(itemNames.join(", ")||"—")}</td>
       <td style="font-family:var(--font-mono)">${money(c.price)}</td>
       <td><button class="toggle ${c.active?'on':''}" onclick="toggleComboActive('${c.id}')"></button></td>
       <td>
-        <button class="icon-btn" onclick="openComboForm('${c.id}')">✎</button>
-        <button class="icon-btn danger" onclick="deleteCombo('${c.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="openComboForm('${c.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCombo('${c.id}')">Excluir</button>
       </td>
     </tr>`;
   }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum combo cadastrado ainda.</td></tr>`;
@@ -1199,7 +1219,7 @@ function renderComboChoiceGroupsList(){
     <div class="card" style="padding:14px;margin-bottom:10px;background:var(--gray-50)">
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input value="${escapeAttr(g.label)}" placeholder="Nome do grupo (ex.: Escolha o refrigerante)" style="flex:1;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px" oninput="updateChoiceGroupField('${g.id}','label',this.value)">
-        <button class="icon-btn danger" onclick="removeChoiceGroupUI('${g.id}')">🗑</button>
+        <button class="btn btn-danger btn-sm" onclick="removeChoiceGroupUI('${g.id}')">Remover</button>
       </div>
       <div style="display:flex;gap:14px;margin-bottom:10px;font-size:12.5px;align-items:center;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="cgtype-${g.id}" ${g.type==='single'?'checked':''} onchange="updateChoiceGroupField('${g.id}','type','single')"> Escolher 1 opção</label>
@@ -1243,8 +1263,8 @@ function renderPromotionsAdmin(){
       <td>${p.endDate ? formatDateBR(p.endDate) : 'sem prazo'} ${expired?'<span class="expired-tag">Expirada</span>':''}</td>
       <td><button class="toggle ${p.active?'on':''}" onclick="togglePromotionActive('${p.id}')"></button></td>
       <td>
-        <button class="icon-btn" onclick="openPromotionForm('${p.id}')">✎</button>
-        <button class="icon-btn danger" onclick="deletePromotion('${p.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="openPromotionForm('${p.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePromotion('${p.id}')">Excluir</button>
       </td>
     </tr>`;
   }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhuma promoção cadastrada ainda.</td></tr>`;
@@ -1307,8 +1327,8 @@ function renderUsersAdmin(){
       <td><b>${escapeHtml(u.name)}</b></td>
       <td><button class="toggle ${u.active?'on':''}" onclick="toggleUserActive('${u.id}')"></button></td>
       <td>
-        <button class="icon-btn" onclick="openUserForm('${u.id}')">✎</button>
-        <button class="icon-btn danger" onclick="deleteUser('${u.id}')">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="openUserForm('${u.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Excluir</button>
       </td>
     </tr>
   `).join("") || `<tr><td colspan="3" style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum usuário cadastrado ainda.</td></tr>`;
@@ -1410,10 +1430,10 @@ function pollWaServerStatus(){
   if(!label) return;
   checkWhatsAppServerStatus().then(status=>{
     const map = {
-      conectado: "🟢 Conectado — as mensagens de status saem automaticamente.",
-      aguardando_leitura_qr: "🟡 Escaneie o QR code abaixo com o WhatsApp da loja.",
-      desconectado: "🟠 Servidor no ar, mas o WhatsApp está desconectado no momento.",
-      erro_conexao: "🔴 Não consegui falar com o servidor — confira a URL.",
+      conectado: "Conectado — as mensagens de status saem automaticamente.",
+      aguardando_leitura_qr: "Escaneie o QR code abaixo com o WhatsApp da loja.",
+      desconectado: "Servidor no ar, mas o WhatsApp está desconectado no momento.",
+      erro_conexao: "Não consegui falar com o servidor — confira a URL.",
       nao_configurado: "Sem servidor configurado — as mensagens continuam abrindo o WhatsApp manual."
     };
     label.textContent = map[status] || "Status desconhecido.";

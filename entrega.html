@@ -73,17 +73,21 @@ function renderCourierPage(){
     return;
   }
   if(order.status === "entregue"){
-    content.innerHTML = `<div class="card empty-state">✅ Esta entrega já foi concluída.<br>Este link não é mais válido.</div>`;
+    content.innerHTML = `<div class="card empty-state">Esta entrega já foi concluída.<br>Este link não é mais válido.</div>`;
     return;
   }
   if(order.status === "cancelado"){
     content.innerHTML = `<div class="card empty-state">Este pedido foi cancelado.<br>Este link não é mais válido.</div>`;
     return;
   }
+  if(order.status === "pendente" || order.status === "preparo"){
+    content.innerHTML = `<div class="card empty-state">Este pedido ainda está sendo preparado.<br>O link do entregador fica disponível quando o pedido sair para entrega.</div>`;
+    return;
+  }
   const mapsUrl = order.location ? buildMapsUrl(order.location) : null;
   const itemsTxt = order.items.map(it=>`${it.qty}x ${escapeHtml(it.name)}`).join(", ");
   const trocoHtml = (order.payment==="dinheiro" && order.changeFor)
-    ? `<div class="troco-highlight" style="margin-top:12px">💵 Troco para ${money(order.changeFor)} — levar <b>${money(order.changeAmount)}</b> de troco</div>`
+    ? `<div class="troco-highlight" style="margin-top:12px">Troco para ${money(order.changeFor)} — levar <b>${money(order.changeAmount)}</b> de troco</div>`
     : "";
 
   let ackHtml = "";
@@ -91,16 +95,16 @@ function renderCourierPage(){
     const seen = order.courierAlertAck && order.courierAlertAck.ts === order.courierAlert.ts;
     if(seen){
       const seenTime = new Date(order.courierAlertAck.seenAt).toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
-      ackHtml = `<div class="courier-ack seen">✅ O cliente visualizou o aviso às ${seenTime}</div>`;
+      ackHtml = `<div class="courier-ack seen">O cliente visualizou o aviso às ${seenTime}</div>`;
     } else {
-      ackHtml = `<div class="courier-ack pending">📨 Aviso enviado — aguardando o cliente visualizar...</div>`;
+      ackHtml = `<div class="courier-ack pending">Aviso enviado — aguardando o cliente visualizar...</div>`;
     }
   }
 
   const phoneDigits = normalizeBrazilPhone(order.phone);
   const deliveredHtml = order.courierDelivered
-    ? `<div class="courier-ack seen" style="margin-top:14px">✅ Você já avisou o administrador que entregou este pedido.</div>`
-    : `<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="reportDelivered()">✅ Entreguei — avisar o administrativo</button>`;
+    ? `<div class="courier-ack seen" style="margin-top:14px">Você já avisou o administrador que entregou este pedido.</div>`
+    : `<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="reportDelivered()">Entreguei — avisar o administrativo</button>`;
 
   content.innerHTML = `
     <div class="card courier-card">
@@ -110,12 +114,12 @@ function renderCourierPage(){
       <div class="courier-items"><b>Itens:</b><br>${itemsTxt}</div>
       ${trocoHtml}
       ${mapsUrl
-        ? `<a class="btn btn-primary btn-block" style="margin-top:18px" href="${mapsUrl}" target="_blank">📍 Abrir localização no mapa</a>`
+        ? `<a class="btn btn-primary btn-block" style="margin-top:18px" href="${mapsUrl}" target="_blank">Abrir localização no mapa</a>`
         : `<p style="font-size:12.5px;color:var(--ink-soft);margin-top:16px">O cliente não compartilhou localização exata — use o endereço acima.</p>`}
-      <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="sendCourierAlert('chegando')">🛵 Avisar que estou chegando</button>
-      <button class="btn btn-gold btn-block" style="margin-top:10px" onclick="sendCourierAlert('chegou')">🚪 Cheguei na porta</button>
+      <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="sendCourierAlert('chegando')">Avisar que estou chegando</button>
+      <button class="btn btn-gold btn-block" style="margin-top:10px" onclick="sendCourierAlert('chegou')">Cheguei na porta</button>
       <p style="font-size:11.5px;color:var(--gray-300);margin-top:8px;text-align:center">Cada botão abre o WhatsApp do cliente com a mensagem pronta — é só apertar enviar.</p>
-      ${phoneDigits ? `<a class="btn btn-danger btn-block" style="margin-top:16px" href="tel:+${phoneDigits}">📞 Ligar para o cliente (casos extremos)</a>` : ""}
+      ${phoneDigits ? `<a class="btn btn-danger btn-block" style="margin-top:16px" href="tel:+${phoneDigits}">Ligar para o cliente (casos extremos)</a>` : ""}
       ${deliveredHtml}
       <div class="courier-status-msg" id="courierAlertStatus">${lastActionMsg}</div>
       ${ackHtml}
@@ -141,7 +145,7 @@ function reportDelivered(){
 function sendCourierAlert(type){
   if(!orderId) return;
   const order = STATE.orders.find(o=>o.id===orderId);
-  if(!order || order.status === "entregue" || order.status === "cancelado"){
+  if(!order || order.status === "entregue" || order.status === "cancelado" || order.status === "pendente" || order.status === "preparo"){
     showToast("Este link não é mais válido para essa entrega.");
     renderCourierPage();
     return;
@@ -155,8 +159,8 @@ function sendCourierAlert(type){
     if(waWindow && waUrl){ waWindow.location.href = waUrl; }
     else if(waWindow){ waWindow.close(); }
     lastActionMsg = waUrl
-      ? (viaApp ? "✅ Cliente avisado pelo app e pelo WhatsApp." : "✅ WhatsApp aberto para avisar o cliente.")
-      : "⚠️ Não foi possível montar o link do WhatsApp — telefone inválido.";
+      ? (viaApp ? "Cliente avisado pelo app e pelo WhatsApp." : "WhatsApp aberto para avisar o cliente.")
+      : "Não foi possível montar o link do WhatsApp — telefone inválido.";
     if(statusEl) statusEl.textContent = lastActionMsg;
   };
   if(useFirebase){

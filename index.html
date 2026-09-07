@@ -24,7 +24,7 @@
 .menu-header.has-custom-bg::before{display:none;}
 .brand-name{color:var(--white);font-size:19px;font-weight:700;line-height:1.1;}
 .brand-tag{color:var(--gold-300);font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
-.cart-btn{position:relative;background:rgba(255,255,255,.12);color:var(--white);width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;}
+.cart-btn{position:relative;background:rgba(255,255,255,.14);color:var(--white);height:40px;padding:0 16px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;letter-spacing:.02em;}
 .cart-count{position:absolute;top:-6px;right:-6px;background:var(--orange);color:var(--white);font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:999px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
 .menu-header h1{color:var(--white);font-size:28px;max-width:420px;line-height:1.2;margin-bottom:8px;}
 .menu-header p{color:var(--gray-200);font-size:14.5px;max-width:440px;}
@@ -44,7 +44,7 @@
 .promo-card{flex:0 0 190px;scroll-snap-align:start;background:var(--white);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;position:relative;}
 .promo-card .promo-ribbon{position:absolute;top:10px;left:-6px;background:var(--orange);color:#fff;font-size:10.5px;font-weight:700;padding:4px 12px 4px 16px;border-radius:0 6px 6px 0;letter-spacing:.03em;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.18);}
 .promo-card img{width:100%;height:110px;object-fit:cover;background:var(--gray-100);}
-.promo-img-placeholder{width:100%;height:110px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:28px;}
+.promo-img-placeholder{width:100%;height:110px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--gray-300);letter-spacing:.03em;}
 .promo-body{padding:10px 12px 12px;}
 .promo-title{font-weight:700;font-size:13.5px;margin-bottom:4px;line-height:1.3;}
 .promo-price{font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:14px;}
@@ -67,7 +67,7 @@
 .product-card{background:var(--white);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:box-shadow .18s, transform .18s;display:flex;flex-direction:column;}
 .product-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
 .product-img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--gray-100);}
-.product-img.placeholder{display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:34px;}
+.product-img.placeholder{display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:13px;font-weight:600;letter-spacing:.03em;}
 .product-body{padding:14px 15px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
 .product-name{font-size:15.5px;font-weight:700;font-family:var(--font-display);}
 .combo-tag{background:var(--gold-500);color:var(--purple-900);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px;vertical-align:middle;text-transform:uppercase;}
@@ -169,21 +169,20 @@
             <div class="brand-tag">Peça online</div>
           </div>
         </div>
-        <button class="cart-btn" onclick="openCart()">🛒<span class="cart-count hidden" id="cartCount">0</span></button>
+        <button class="cart-btn" onclick="openCart()">Sacola<span class="cart-count hidden" id="cartCount">0</span></button>
       </div>
       <h1>O cardápio inteiro, do jeito que você gosta de ver.</h1>
       <p>Escolha os itens, monte seu pedido e acompanhe tudo até chegar na sua porta.</p>
       <div class="store-status">
         <span class="pill"><span class="dot" id="storeStatusDot"></span><span id="storeStatusText">Loja aberta agora</span></span>
       </div>
-      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTrackingLookup()">📦 Acompanhar Pedido →</button>
+      <button class="my-order-pill hidden" id="myOrderPill" onclick="openTrackingLookup()">Acompanhar Pedido →</button>
     </div>
   </header>
 
   <div class="promo-section hidden" id="promoBar">
     <div class="container">
       <div class="promo-heading">
-        <span class="promo-flame">🔥</span>
         <div><h2>Promoções</h2><p>Ofertas por tempo limitado — aproveite antes que acabem</p></div>
       </div>
       <div class="promo-carousel-wrap">
@@ -292,7 +291,7 @@ function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badg
 
 function productCardHtml(p){
   return `<div class="product-card" onclick="openItemDetail('${p.id}','product')">
-    ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">🍽️</div>`}
+    ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(p.name)}</div>
       <div class="product-desc">${escapeHtml(p.description||"")}</div>
@@ -306,7 +305,7 @@ function productCardHtml(p){
 function comboCardHtml(c){
   const hasRequiredChoice = (c.choiceGroups||[]).some(g=>g.required && g.productIds && g.productIds.length);
   return `<div class="product-card" onclick="openItemDetail('${c.id}','combo')">
-    ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">🍔</div>`}
+    ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(c.name)}<span class="combo-tag">Combo</span></div>
       <div class="product-desc">${escapeHtml(c.description||"")}</div>
@@ -344,7 +343,7 @@ function renderPromotions(){
     const img = p.image || base.image;
     return `<div class="promo-card" onclick="openPromotionDetail('${p.id}')">
       <div class="promo-ribbon">Oferta</div>
-      ${img ? `<img src="${escapeAttr(img)}">` : `<div class="promo-img-placeholder">🔥</div>`}
+      ${img ? `<img src="${escapeAttr(img)}">` : `<div class="promo-img-placeholder">Oferta</div>`}
       <div class="promo-body">
         <div class="promo-title">${escapeHtml(p.title || base.name)}</div>
         <div class="promo-price">${price < base.price ? `<span class="strike">${money(base.price)}</span>` : ""}<span>${money(price)}</span></div>
@@ -409,10 +408,10 @@ function showDetailSheet(item){
   }).join("");
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
-      ${item.image ? `<img class="detail-img" src="${escapeAttr(item.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">${item.isCombo?'🍔':'🍽️'}</div>`}
+      ${item.image ? `<img class="detail-img" src="${escapeAttr(item.image)}">` : `<div class="detail-img product-img placeholder" style="aspect-ratio:16/10">Sem foto</div>`}
       <div class="detail-body">
         <h3>${escapeHtml(item.name)}</h3>
-        ${item.originalPrice ? `<div class="promo-tag-line">🔥 Promoção — de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
+        ${item.originalPrice ? `<div class="promo-tag-line">Promoção — de ${money(item.originalPrice)} por ${money(item.price)}</div>` : ""}
         <div class="desc">${escapeHtml(item.description||"")}</div>
         ${includedNames.length ? `<div class="combo-includes">Inclui: <b>${includedNames.map(escapeHtml).join(", ")}</b></div>` : ""}
         ${choiceGroupsHtml}
@@ -494,7 +493,6 @@ function showCourierAlertOverlay(type, orderId, alertTs){
   div.className = "courier-alert-overlay";
   div.innerHTML = `
     <div class="courier-alert-box">
-      <div class="courier-alert-icon">${isHere ? "🚪" : "🛵"}</div>
       <div class="courier-alert-text">${isHere ? "O entregador já está na porta!" : "O entregador está chegando!"}</div>
       <button class="btn btn-gold btn-block" onclick="acknowledgeCourierAlert('${orderId}', ${alertTs}); this.closest('.courier-alert-overlay').remove();">OK, entendi</button>
     </div>`;
@@ -751,7 +749,7 @@ function renderCartSheetContent(){
     <div class="cart-items">
       ${cart.map(c=>`
         <div class="cart-item">
-          ${c.image?`<img src="${escapeAttr(c.image)}">`:`<div style="width:56px;height:56px;border-radius:9px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;flex-shrink:0">${c.isCombo?'🍔':'🍽️'}</div>`}
+          ${c.image?`<img src="${escapeAttr(c.image)}">`:`<div style="width:56px;height:56px;border-radius:9px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;font-weight:700;color:var(--gray-300)">S/ FOTO</div>`}
           <div class="ci-info">
             <div class="ci-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
             <div class="ci-price">${money(c.price)} un.</div>
@@ -763,7 +761,7 @@ function renderCartSheetContent(){
                 <span style="font-family:var(--font-mono);font-weight:700">${c.qty}</span>
                 <button onclick="changeCartQty('${c.lineId}',1)">+</button>
               </div>
-              <button class="ci-remove" onclick="removeFromCart('${c.lineId}')" title="Remover" aria-label="Remover">🗑</button>
+              <button class="ci-remove" onclick="removeFromCart('${c.lineId}')" title="Remover" aria-label="Remover">×</button>
             </div>
           </div>
         </div>`).join("")}
@@ -800,13 +798,13 @@ function openCheckout(){
         <div class="field">
           <label>Como você quer receber?</label>
           <div class="pay-options">
-            <div class="pay-opt active" id="delivery-entrega" onclick="selectDeliveryType('entrega')">🛵 Entrega</div>
-            <div class="pay-opt" id="delivery-retirada" onclick="selectDeliveryType('retirada')">🏪 Retirar no local</div>
+            <div class="pay-opt active" id="delivery-entrega" onclick="selectDeliveryType('entrega')">Entrega</div>
+            <div class="pay-opt" id="delivery-retirada" onclick="selectDeliveryType('retirada')">Retirar no local</div>
           </div>
         </div>
         <div id="deliverySection">
           <div class="field"><label>Endereço de entrega</label><textarea id="chkAddress" required placeholder="Rua, número, bairro, complemento"></textarea></div>
-          <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
+          <button type="button" class="btn btn-ghost btn-block" id="shareLocationBtn" onclick="requestLocation()" style="margin-bottom:16px">Compartilhar minha localização (ajuda o motoboy a chegar certinho)</button>
           ${fees.length ? `
           <div class="field"><label>Bairro de entrega</label>
             <select id="chkBairro" onchange="updateCheckoutFee()">
@@ -816,7 +814,7 @@ function openCheckout(){
           </div>` : ""}
         </div>
         <div id="pickupInfo" class="hidden" style="background:var(--gray-50);padding:12px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;color:var(--ink-soft)">
-          🏪 Retire seu pedido em:<br><b>${storeAddr ? escapeHtml(storeAddr) : "Endereço da loja — combine pelo WhatsApp"}</b>
+          Retire seu pedido em:<br><b>${storeAddr ? escapeHtml(storeAddr) : "Endereço da loja — combine pelo WhatsApp"}</b>
         </div>
         <div class="field">
           <label>Forma de pagamento</label>
@@ -847,11 +845,11 @@ function requestLocation(){
   navigator.geolocation.getCurrentPosition(
     pos=>{
       capturedLocation = {lat: pos.coords.latitude, lng: pos.coords.longitude};
-      if(btn){ btn.textContent = "✅ Localização compartilhada"; }
+      if(btn){ btn.textContent = "Localização compartilhada"; }
       showToast("Localização capturada — vai ajudar o motoboy a chegar certinho.");
     },
     ()=>{
-      if(btn){ btn.textContent = "📍 Compartilhar minha localização (ajuda o motoboy a chegar certinho)"; btn.disabled = false; }
+      if(btn){ btn.textContent = "Compartilhar minha localização (ajuda o motoboy a chegar certinho)"; btn.disabled = false; }
       showToast("Não consegui pegar sua localização — pode continuar sem ela.");
     },
     {enableHighAccuracy:true, timeout:10000}
@@ -960,14 +958,14 @@ function showOrderConfirmation(order, waUrl){
   openScrim(`
     <div class="sheet" onclick="event.stopPropagation()">
       <div class="confirm-body">
-        <div class="confirm-check">✓</div>
+        <div class="confirm-check">OK</div>
         <div style="font-weight:700;font-size:15px">Pedido confirmado!</div>
         <div class="order-code">${order.code}</div>
         <div style="font-size:13px;color:var(--ink-soft)">Guarde esse código para acompanhar seu pedido</div>
-        ${order.deliveryType === "retirada" ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">🏪 Retirada no local${STATE.config.storeAddress ? " — " + escapeHtml(STATE.config.storeAddress) : ""}</div>` : ""}
-        ${order.changeFor ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">💵 Troco combinado para ${money(order.changeFor)} (troco de ${money(order.changeAmount)})</div>` : ""}
+        ${order.deliveryType === "retirada" ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">Retirada no local${STATE.config.storeAddress ? " — " + escapeHtml(STATE.config.storeAddress) : ""}</div>` : ""}
+        ${order.changeFor ? `<div style="font-size:13px;color:var(--purple-700);font-weight:600;margin-top:8px">Troco combinado para ${money(order.changeFor)} (troco de ${money(order.changeAmount)})</div>` : ""}
         ${waUrl ? `<a class="btn btn-gold btn-block" style="margin-top:16px" href="${waUrl}" target="_blank">Enviar pelo WhatsApp</a><div style="font-size:11.5px;color:var(--gray-300);margin-top:6px">Se não abriu sozinho, toque no botão acima para confirmar por lá.</div>` : ""}
-        <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openTracking('${order.id}')">📦 Acompanhar meu pedido</button>
+        <button class="btn btn-primary btn-block" style="margin-top:16px" onclick="openTracking('${order.id}')">Acompanhar meu pedido</button>
         <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="closeScrim()">Fechar</button>
       </div>
     </div>`);
