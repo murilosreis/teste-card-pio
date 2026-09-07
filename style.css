@@ -180,9 +180,26 @@ img{max-width:100%;display:block;}
 .pdv-product-card .pp{font-family:var(--font-mono);color:var(--purple-700);font-weight:700;font-size:14px;margin-top:7px;}
 .pdv-cart-panel{position:sticky;top:20px;}
 .pdv-cart-items{max-height:32vh;overflow-y:auto;margin-bottom:6px;}
-.pdv-cart-line{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
-.pdv-cart-line .pl-name{flex:1;font-weight:600;}
-.pdv-cart-line .pl-qty{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);}
-.pdv-cart-line .pl-qty button{width:22px;height:22px;border-radius:6px;background:var(--gray-100);font-weight:700;}
-.pdv-cart-line .pl-remove{color:var(--red);font-weight:700;width:22px;height:22px;border-radius:6px;background:var(--red-100);}
+.pdv-cart-line{padding:12px 0;border-bottom:1px solid var(--gray-100);}
+.pl-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px;}
+.pl-name{font-weight:700;font-size:14px;color:var(--ink);}
+.pl-unit{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);flex-shrink:0;}
+.pl-bottom{display:flex;align-items:center;gap:10px;}
+.pdv-cart-line .pl-qty{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-weight:700;background:var(--gray-50);border-radius:8px;padding:4px 8px;}
+.pdv-cart-line .pl-qty button{width:24px;height:24px;border-radius:6px;background:var(--white);border:1px solid var(--gray-200);font-weight:700;}
+.pl-subtotal{flex:1;text-align:right;font-family:var(--font-mono);font-weight:700;color:var(--purple-700);font-size:14px;}
+.pdv-cart-line .pl-remove{color:var(--red);font-weight:700;width:26px;height:26px;border-radius:7px;background:var(--red-100);flex-shrink:0;}
 .pdv-empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:24px 0;grid-column:1/-1;}
+
+/* alerta em tela cheia (chegada do entregador, pedido pronto para o atendente) */
+.courier-alert-overlay{position:fixed;inset:0;background:rgba(42,15,78,.94);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeInOverlay .2s ease;}
+@keyframes fadeInOverlay{from{opacity:0}to{opacity:1}}
+.courier-alert-box{background:var(--white);border-radius:20px;padding:38px 28px;text-align:center;max-width:340px;box-shadow:var(--shadow-lg);}
+.courier-alert-icon{font-size:52px;margin-bottom:14px;line-height:1;}
+.courier-alert-text{font-family:var(--font-display);font-size:19px;font-weight:700;margin-bottom:22px;color:var(--ink);}
+
+/* forma de pagamento (checkout do cliente, PDV, atendentes) */
+.pay-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;}
+.pay-opt{padding:13px 8px;border:1.5px solid var(--gray-200);border-radius:10px;text-align:center;font-size:13px;font-weight:700;color:var(--ink-soft);cursor:pointer;background:var(--white);transition:all .12s;}
+.pay-opt:hover{border-color:var(--purple-300);}
+.pay-opt.active{border-color:var(--purple-700);color:var(--white);background:var(--purple-700);box-shadow:0 3px 8px rgba(107,33,168,.25);}

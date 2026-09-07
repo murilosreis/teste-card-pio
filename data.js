@@ -55,6 +55,39 @@ function statusLabelForOrder(order, status){
   if(status === "saiu_entrega" && order && (order.deliveryType === "retirada" || order.deliveryType === "balcao")) return "Pronto para retirada";
   return STATUS_LABEL[status];
 }
+
+/* ---------- som de notificação (aviso do entregador, pedido pronto pro atendente) ---------- */
+function playNotificationSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0,1,2].forEach(i=>{
+      const t = ctx.currentTime + i*0.3;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 1046.5;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.4, t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t+0.25);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t+0.27);
+    });
+  }catch(e){ /* navegador pode bloquear áudio sem interação prévia, o alerta visual continua */ }
+}
+
+/* ---------- scrim/ficha compartilhado (cada página pode definir scrimCleanup() pra limpeza própria) ---------- */
+function openScrim(innerHtml){
+  closeScrim();
+  const div = document.createElement("div");
+  div.className = "scrim"; div.id = "activeScrim";
+  div.onclick = closeScrim;
+  div.innerHTML = innerHtml;
+  document.body.appendChild(div);
+}
+function closeScrim(){
+  if(typeof scrimCleanup === "function") scrimCleanup();
+  const s = document.getElementById("activeScrim"); if(s) s.remove();
+}
 const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -77,6 +110,7 @@ function buildTicketHtml(order, viaLabel, store){
   const isPickup = order.deliveryType === "retirada";
   const isBalcao = order.deliveryType === "balcao";
   const tableLine = order.tableNumber ? `<div class="ticket-line"><b>MESA ${escapeHtml(String(order.tableNumber))}</b></div>` : "";
+  const attendantLine = order.registeredBy ? `<div class="ticket-line">Atendente: ${escapeHtml(order.registeredBy)}</div>` : "";
   const addressLine = isBalcao
     ? `<div class="ticket-line"><b>${order.tableNumber ? "ATENDIMENTO NA MESA" : "VENDA NO BALCÃO"}</b></div>`
     : (isPickup
@@ -90,6 +124,7 @@ function buildTicketHtml(order, viaLabel, store){
       <div class="ticket-line">${time}</div>
       <div class="ticket-sep"></div>
       ${tableLine}
+      ${attendantLine}
       <div class="ticket-line"><b>${escapeHtml(order.customerName)}</b></div>
       <div class="ticket-line">${escapeHtml(order.phone)}</div>
       ${addressLine}

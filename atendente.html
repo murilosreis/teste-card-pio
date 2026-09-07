@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Atendimento | Sabor Direto</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,18 +20,29 @@ body{background:var(--bg);}
 .atd-login .mark-big.custom-logo::after{display:none;}
 .atd-login h2{font-family:var(--font-display);font-size:20px;margin-bottom:6px;}
 .atd-login p{font-size:13px;color:var(--ink-soft);margin-bottom:22px;}
-.atd-login input{width:100%;padding:12px 14px;border:1.5px solid var(--gray-200);border-radius:10px;margin-bottom:10px;font-size:16px;}
+.atd-login input{width:100%;padding:13px 14px;border:1.5px solid var(--gray-200);border-radius:10px;margin-bottom:10px;font-size:16px;}
 #atdShell{display:none;}
-.atd-header{background:var(--purple-900);color:var(--white);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}
+.atd-header{background:var(--purple-900);color:var(--white);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}
 .atd-header .brand{display:flex;align-items:center;gap:9px;}
-.atd-header .mark{width:30px;height:30px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
+.atd-header .mark{width:28px;height:28px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
 .atd-header .mark::after{content:"";position:absolute;inset:6px;background:var(--purple-900);border-radius:2px;}
 .atd-header .mark.custom-logo{transform:none;border-radius:8px;background-size:cover;background-position:center;background-color:var(--white);}
 .atd-header .mark.custom-logo::after{display:none;}
-.atd-header .brand-name{font-weight:700;font-size:15px;}
-.atd-header .who{font-size:12.5px;color:var(--gray-300);display:flex;align-items:center;gap:10px;}
-.atd-header .who button{color:var(--gray-300);font-size:12.5px;text-decoration:underline;}
-.atd-main{max-width:1100px;margin:0 auto;padding:18px;}
+.atd-header .brand-name{font-weight:700;font-size:14.5px;}
+.atd-header .who{font-size:12px;color:var(--gray-300);display:flex;align-items:center;gap:10px;}
+.atd-header .who button{color:var(--gray-300);font-size:12px;text-decoration:underline;padding:6px 0;}
+/* pedido atual: fixo no topo, sempre visível */
+.atd-order-panel{background:var(--white);padding:18px 16px;border-bottom:1px solid var(--gray-100);}
+.atd-order-panel h3{font-size:16px;margin-bottom:12px;}
+.atd-order-empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:14px 0;}
+.atd-order-items{max-height:26vh;overflow-y:auto;margin-bottom:4px;}
+.atd-order-fields{margin-top:6px;}
+.atd-order-fields.hidden{display:none;}
+.atd-main{padding:14px;}
+.atd-product-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(min-width:560px){.atd-product-grid{grid-template-columns:repeat(3,1fr);}}
+.atd-cat-nav{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+.atd-cat-nav .cat-chip{flex-shrink:0;padding:10px 16px;font-size:13.5px;}
 </style>
 </head>
 <body>
@@ -50,38 +61,38 @@ body{background:var(--bg);}
     <div class="brand"><span class="mark" id="brandMarkAtd"></span><span class="brand-name" id="storeNameLabelAtd">Sabor Direto</span></div>
     <div class="who">Olá, <b id="loggedAtdName"></b><button onclick="atendenteLogout()">Sair</button></div>
   </header>
-  <main class="atd-main">
-    <div class="pdv-layout">
-      <div class="card pdv-panel">
-        <div class="pdv-type-toggle">
-          <button class="pdv-type-btn active" id="pdv-type-mesa" onclick="setPdvType('mesa')">Mesa</button>
-          <button class="pdv-type-btn" id="pdv-type-balcao" onclick="setPdvType('balcao')">Balcão (sem mesa)</button>
-        </div>
-        <div class="field" id="pdvTableField"><label>Número da mesa</label><input id="pdvTableNumber" type="text" inputmode="numeric" placeholder="Ex.: 5"></div>
-        <div id="pdvCatNav" class="pdv-cat-nav"></div>
-        <div id="pdvProductGrid" class="pdv-product-grid"></div>
-      </div>
-      <div class="card pdv-panel pdv-cart-panel">
-        <h3>Pedido atual</h3>
-        <div id="pdvCartItems" class="pdv-cart-items"></div>
-        <div class="sum-row total" style="margin:14px 0"><span>Total</span><span id="pdvCartTotal">R$ 0,00</span></div>
-        <div class="field"><label>Nome do cliente (opcional)</label><input id="pdvCustomerName" placeholder="Cliente balcão"></div>
-        <div class="field"><label>Telefone (opcional)</label><input id="pdvCustomerPhone" placeholder="(00) 00000-0000"></div>
-        <div class="field">
-          <label>Forma de pagamento</label>
-          <div class="pay-options">
-            <div class="pay-opt active" id="pdv-pay-pix" onclick="selectPdvPayment('pix')">Pix</div>
-            <div class="pay-opt" id="pdv-pay-cartao" onclick="selectPdvPayment('cartao')">Cartão</div>
-            <div class="pay-opt" id="pdv-pay-dinheiro" onclick="selectPdvPayment('dinheiro')">Dinheiro</div>
-          </div>
-        </div>
-        <div class="field hidden" id="pdvTrocoField">
-          <label>Vai pagar com quanto?</label>
-          <input id="pdvTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 (deixe em branco se for o valor exato)">
-        </div>
-        <button class="btn btn-gold btn-block" id="pdvSubmitBtn" onclick="submitPdvOrder()" disabled>Confirmar pedido</button>
-      </div>
+
+  <div class="atd-order-panel">
+    <h3>Pedido atual</h3>
+    <div class="pdv-type-toggle">
+      <button class="pdv-type-btn active" id="pdv-type-mesa" onclick="setPdvType('mesa')">Mesa</button>
+      <button class="pdv-type-btn" id="pdv-type-balcao" onclick="setPdvType('balcao')">Balcão (sem mesa)</button>
     </div>
+    <div class="field" id="pdvTableField"><label>Número da mesa</label><input id="pdvTableNumber" type="text" inputmode="numeric" placeholder="Ex.: 5"></div>
+    <div id="pdvCartItems" class="atd-order-items"></div>
+    <div class="sum-row total" style="margin:12px 0"><span>Total</span><span id="pdvCartTotal">R$ 0,00</span></div>
+    <div class="atd-order-fields hidden" id="atdOrderFields">
+      <div class="field"><label>Nome do cliente (opcional)</label><input id="pdvCustomerName" placeholder="Cliente balcão"></div>
+      <div class="field"><label>Telefone (opcional)</label><input id="pdvCustomerPhone" placeholder="(00) 00000-0000"></div>
+      <div class="field">
+        <label>Forma de pagamento</label>
+        <div class="pay-options">
+          <div class="pay-opt active" id="pdv-pay-pix" onclick="selectPdvPayment('pix')">Pix</div>
+          <div class="pay-opt" id="pdv-pay-cartao" onclick="selectPdvPayment('cartao')">Cartão</div>
+          <div class="pay-opt" id="pdv-pay-dinheiro" onclick="selectPdvPayment('dinheiro')">Dinheiro</div>
+        </div>
+      </div>
+      <div class="field hidden" id="pdvTrocoField">
+        <label>Vai pagar com quanto?</label>
+        <input id="pdvTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 (deixe em branco se for o valor exato)">
+      </div>
+      <button class="btn btn-gold btn-block" id="pdvSubmitBtn" onclick="submitPdvOrder()">Confirmar pedido</button>
+    </div>
+  </div>
+
+  <main class="atd-main">
+    <div id="pdvCatNav" class="atd-cat-nav"></div>
+    <div id="pdvProductGrid" class="atd-product-grid"></div>
   </main>
 </div>
 
@@ -138,7 +149,7 @@ function applyAtdLogo(){
   });
 }
 
-/* ---------- PDV: idêntico ao usado no painel administrativo ---------- */
+/* ---------- PDV: pedido atual fixo no topo, catálogo abaixo ---------- */
 let pdvCart = [];
 let pdvActiveCategory = "Todos";
 let pdvPayment = "pix";
@@ -161,7 +172,7 @@ function renderPdvCatNav(){
   const el = document.getElementById("pdvCatNav");
   if(!el) return;
   el.innerHTML = cats.map(c=>
-    `<button class="cat-chip ${c===pdvActiveCategory?'active':''}" onclick="setPdvCategory('${escapeAttr(c)}')" style="flex-shrink:0">${escapeHtml(c)}</button>`
+    `<button class="cat-chip ${c===pdvActiveCategory?'active':''}" onclick="setPdvCategory('${escapeAttr(c)}')">${escapeHtml(c)}</button>`
   ).join("");
 }
 function setPdvCategory(c){ pdvActiveCategory=c; renderPdvCatNav(); renderPdvProductGrid(); }
@@ -194,6 +205,7 @@ function addToPdvCart(id, isCombo){
   if(existing){ existing.qty += 1; }
   else { pdvCart.push({lineId: uid(), productId:id, name:item.name, price:item.price, qty:1, isCombo:!!isCombo}); }
   renderPdvCartPanel();
+  showToast(`${item.name} adicionado`);
 }
 function changePdvQty(lineId, d){
   const item = pdvCart.find(c=>c.lineId===lineId);
@@ -209,22 +221,28 @@ function removePdvItem(lineId){
 function renderPdvCartPanel(){
   const itemsEl = document.getElementById("pdvCartItems");
   const totalEl = document.getElementById("pdvCartTotal");
-  const btn = document.getElementById("pdvSubmitBtn");
+  const fieldsWrap = document.getElementById("atdOrderFields");
   if(!itemsEl) return;
   const total = pdvCart.reduce((s,c)=>s+c.price*c.qty,0);
   itemsEl.innerHTML = pdvCart.length ? pdvCart.map(c=>`
     <div class="pdv-cart-line">
-      <span class="pl-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</span>
-      <span class="pl-qty">
-        <button onclick="changePdvQty('${c.lineId}',-1)">−</button>
-        ${c.qty}
-        <button onclick="changePdvQty('${c.lineId}',1)">+</button>
-      </span>
-      <button class="pl-remove" onclick="removePdvItem('${c.lineId}')">×</button>
+      <div class="pl-top">
+        <span class="pl-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</span>
+        <span class="pl-unit">${money(c.price)} un.</span>
+      </div>
+      <div class="pl-bottom">
+        <span class="pl-qty">
+          <button onclick="changePdvQty('${c.lineId}',-1)">−</button>
+          ${c.qty}
+          <button onclick="changePdvQty('${c.lineId}',1)">+</button>
+        </span>
+        <span class="pl-subtotal">${money(c.price*c.qty)}</span>
+        <button class="pl-remove" onclick="removePdvItem('${c.lineId}')">×</button>
+      </div>
     </div>
-  `).join("") : `<p class="pdv-empty">Toque nos itens ao lado para adicionar ao pedido.</p>`;
+  `).join("") : `<p class="atd-order-empty">Toque nos itens abaixo para montar o pedido.</p>`;
   if(totalEl) totalEl.textContent = money(total);
-  if(btn) btn.disabled = pdvCart.length===0;
+  if(fieldsWrap) fieldsWrap.classList.toggle("hidden", pdvCart.length===0);
 }
 function selectPdvPayment(p){
   pdvPayment = p;
@@ -273,6 +291,37 @@ function submitPdvOrder(){
   });
 }
 
+/* ---------- aviso quando o admin marca o pedido como pronto ---------- */
+let knownReadyOrderIds = null;
+function checkForReadyOrders(){
+  if(!loggedAtdName) return;
+  const myReadyIds = STATE.orders
+    .filter(o=>o.deliveryType==="balcao" && o.registeredBy===loggedAtdName && o.status==="saiu_entrega")
+    .map(o=>o.id);
+  if(knownReadyOrderIds === null){
+    knownReadyOrderIds = new Set(myReadyIds);
+    return;
+  }
+  const newlyReady = myReadyIds.filter(id=>!knownReadyOrderIds.has(id));
+  knownReadyOrderIds = new Set(myReadyIds);
+  newlyReady.forEach(id=>{
+    const order = STATE.orders.find(o=>o.id===id);
+    if(order) showReadyAlert(order);
+  });
+}
+function showReadyAlert(order){
+  playNotificationSound();
+  const label = order.tableNumber ? "Mesa " + order.tableNumber : "Balcão";
+  const div = document.createElement("div");
+  div.className = "courier-alert-overlay";
+  div.innerHTML = `
+    <div class="courier-alert-box">
+      <div class="courier-alert-text">Pedido ${order.code} (${label}) está pronto!</div>
+      <button class="btn btn-gold btn-block" onclick="this.closest('.courier-alert-overlay').remove()">OK, entendi</button>
+    </div>`;
+  document.body.appendChild(div);
+}
+
 initData(function(){
   applyAtdLogo();
   document.getElementById("storeNameLabelAtd").textContent = STATE.config.storeName;
@@ -280,7 +329,7 @@ initData(function(){
     loggedAtdName = sessionStorage.getItem("sd_atd_name") || "Atendente";
     showAtdShell();
   }
-});
+}, checkForReadyOrders);
 </script>
 </body>
 </html>
