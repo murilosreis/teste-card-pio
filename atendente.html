@@ -95,8 +95,8 @@ let loggedAtdName = "";
 function tryAtendenteLogin(){
   const name = document.getElementById("atdNameInput").value.trim();
   const pass = document.getElementById("atdPassInput").value;
-  if(pass === STATE.config.adminPassword && name){
-    loggedAtdName = name;
+  if(pass === STATE.config.adminPassword){
+    loggedAtdName = name || "Administrador";
     finishAtdLogin();
     return;
   }
@@ -169,17 +169,21 @@ function renderPdvProductGrid(){
   const grid = document.getElementById("pdvProductGrid");
   if(!grid) return;
   let items = [];
+  const activeCombos = STATE.combos.filter(c=>c.active).map(c=>Object.assign({}, c, {isCombo:true}));
   if(pdvActiveCategory === "Combos"){
-    items = STATE.combos.filter(c=>c.active).map(c=>Object.assign({}, c, {isCombo:true}));
+    items = activeCombos;
   } else if(pdvActiveCategory === "Todos"){
-    items = STATE.products.filter(p=>p.active);
+    items = [...STATE.products.filter(p=>p.active), ...activeCombos];
   } else {
     items = STATE.products.filter(p=>p.active && p.category===pdvActiveCategory);
   }
   grid.innerHTML = items.length ? items.map(it=>`
     <div class="pdv-product-card" onclick="addToPdvCart('${it.id}', ${!!it.isCombo})">
-      <div class="pn">${escapeHtml(it.name)}${it.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
-      <div class="pp">${money(it.price)}</div>
+      <div class="pdv-product-img">${it.image ? `<img src="${escapeAttr(it.image)}" alt="">` : `<div class="ph">Sem foto</div>`}</div>
+      <div class="pdv-product-body">
+        <div class="pn">${escapeHtml(it.name)}${it.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
+        <div class="pp">${money(it.price)}</div>
+      </div>
     </div>
   `).join("") : `<p class="pdv-empty">Nenhum item nesta categoria.</p>`;
 }

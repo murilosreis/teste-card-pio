@@ -159,3 +159,30 @@ img{max-width:100%;display:block;}
   .ticket-sep{border-top:1px dashed #000;margin:10px 0;}
   .ticket-pagebreak{page-break-after:always;}
 }
+
+/* PDV / Balcão (painel administrativo e tela de atendentes) */
+.pdv-layout{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start;}
+@media(max-width:900px){.pdv-layout{grid-template-columns:1fr;}}
+.pdv-panel{padding:20px 22px;}
+.pdv-type-toggle{display:flex;gap:8px;margin-bottom:16px;}
+.pdv-type-btn{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--ink-soft);font-weight:700;font-size:13.5px;}
+.pdv-type-btn.active{background:var(--purple-700);border-color:var(--purple-700);color:var(--white);}
+.pdv-cat-nav{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px;}
+.pdv-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;max-height:56vh;overflow-y:auto;padding:4px 4px 4px 0;}
+.pdv-product-card{border-radius:14px;background:var(--white);cursor:pointer;border:1.5px solid var(--gray-100);overflow:hidden;box-shadow:0 1px 3px rgba(20,10,40,.06);transition:transform .12s, box-shadow .12s, border-color .12s;}
+.pdv-product-card:hover{border-color:var(--purple-500);box-shadow:0 6px 16px rgba(107,33,168,.18);transform:translateY(-2px);}
+.pdv-product-card:active{transform:translateY(0);}
+.pdv-product-img{width:100%;aspect-ratio:4/3;background:var(--gray-100);overflow:hidden;}
+.pdv-product-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.pdv-product-img .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--gray-300);font-size:11px;font-weight:700;letter-spacing:.03em;}
+.pdv-product-body{padding:10px 12px 12px;}
+.pdv-product-card .pn{font-weight:700;font-size:13.5px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.65em;}
+.pdv-product-card .pp{font-family:var(--font-mono);color:var(--purple-700);font-weight:700;font-size:14px;margin-top:7px;}
+.pdv-cart-panel{position:sticky;top:20px;}
+.pdv-cart-items{max-height:32vh;overflow-y:auto;margin-bottom:6px;}
+.pdv-cart-line{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+.pdv-cart-line .pl-name{flex:1;font-weight:600;}
+.pdv-cart-line .pl-qty{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);}
+.pdv-cart-line .pl-qty button{width:22px;height:22px;border-radius:6px;background:var(--gray-100);font-weight:700;}
+.pdv-cart-line .pl-remove{color:var(--red);font-weight:700;width:22px;height:22px;border-radius:6px;background:var(--red-100);}
+.pdv-empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:24px 0;grid-column:1/-1;}
