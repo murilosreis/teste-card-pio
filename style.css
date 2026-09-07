@@ -135,10 +135,27 @@ img{max-width:100%;display:block;}
 .chat-input-row{display:flex;gap:8px;margin-top:10px;}
 .chat-input-row input{flex:1;padding:10px 13px;border:1.5px solid var(--gray-200);border-radius:10px;}
 
-/* documentos legais (termos de uso, privacidade) — usado no cardápio e no painel */
+/* documentos legais (termos de uso, privacidade), usado no cardápio e no painel */
 .legal-doc-body{padding:22px;font-size:13.5px;color:var(--ink-soft);line-height:1.65;}
 .legal-doc-body h4{color:var(--ink);font-size:14.5px;margin:18px 0 6px;}
 .legal-doc-body h4:first-child{margin-top:0;}
 .legal-doc-body p{margin-bottom:8px;}
 .legal-doc-body ul{margin:6px 0 10px 18px;}
 .legal-doc-body li{margin-bottom:4px;}
+
+/* impressão de tickets (usado no painel e na tela de atendentes) */
+#printArea{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{display:block;position:absolute;top:0;left:0;width:100%;}
+  .ticket{font-family:'JetBrains Mono',monospace;font-size:12px;padding:16px;width:300px;margin:0 auto;color:#000;}
+  .ticket-via{font-weight:700;text-align:center;border:1.5px solid #000;padding:5px;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;}
+  .ticket-store{font-weight:700;text-align:center;font-size:14px;}
+  .ticket-code{text-align:center;font-size:17px;font-weight:700;margin:6px 0;}
+  .ticket-line{margin:2px 0;}
+  .ticket-item{margin-top:6px;font-weight:700;}
+  .ticket-sub{margin-left:12px;font-size:11px;}
+  .ticket-sep{border-top:1px dashed #000;margin:10px 0;}
+  .ticket-pagebreak{page-break-after:always;}
+}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Atendimento | Sabor Direto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+body{background:var(--bg);}
+.atd-login{max-width:360px;margin:0 auto;padding:70px 24px;text-align:center;}
+.atd-login .mark-big{width:56px;height:56px;background:var(--gold-500);transform:rotate(45deg);border-radius:8px;margin:0 auto 22px;position:relative;}
+.atd-login .mark-big::after{content:"";position:absolute;inset:11px;background:var(--purple-900);border-radius:3px;}
+.atd-login .mark-big.custom-logo{transform:none;border-radius:12px;background-size:cover;background-position:center;background-color:var(--white);}
+.atd-login .mark-big.custom-logo::after{display:none;}
+.atd-login h2{font-family:var(--font-display);font-size:20px;margin-bottom:6px;}
+.atd-login p{font-size:13px;color:var(--ink-soft);margin-bottom:22px;}
+.atd-login input{width:100%;padding:12px 14px;border:1.5px solid var(--gray-200);border-radius:10px;margin-bottom:10px;font-size:16px;}
+#atdShell{display:none;}
+.atd-header{background:var(--purple-900);color:var(--white);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;}
+.atd-header .brand{display:flex;align-items:center;gap:9px;}
+.atd-header .mark{width:30px;height:30px;background:var(--gold-500);position:relative;flex-shrink:0;transform:rotate(45deg);border-radius:6px;}
+.atd-header .mark::after{content:"";position:absolute;inset:6px;background:var(--purple-900);border-radius:2px;}
+.atd-header .mark.custom-logo{transform:none;border-radius:8px;background-size:cover;background-position:center;background-color:var(--white);}
+.atd-header .mark.custom-logo::after{display:none;}
+.atd-header .brand-name{font-weight:700;font-size:15px;}
+.atd-header .who{font-size:12.5px;color:var(--gray-300);display:flex;align-items:center;gap:10px;}
+.atd-header .who button{color:var(--gray-300);font-size:12.5px;text-decoration:underline;}
+.atd-main{max-width:1100px;margin:0 auto;padding:18px;}
+</style>
+</head>
+<body>
+
+<div id="atdLogin" class="atd-login">
+  <div class="mark-big" id="loginMarkBig"></div>
+  <h2>Área do atendente</h2>
+  <p>Entre com seu usuário cadastrado para registrar pedidos de mesa ou balcão.</p>
+  <input id="atdNameInput" placeholder="Seu nome de usuário">
+  <input id="atdPassInput" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter') tryAtendenteLogin();">
+  <button class="btn btn-primary btn-block" onclick="tryAtendenteLogin()">Entrar</button>
+</div>
+
+<div id="atdShell">
+  <header class="atd-header">
+    <div class="brand"><span class="mark" id="brandMarkAtd"></span><span class="brand-name" id="storeNameLabelAtd">Sabor Direto</span></div>
+    <div class="who">Olá, <b id="loggedAtdName"></b><button onclick="atendenteLogout()">Sair</button></div>
+  </header>
+  <main class="atd-main">
+    <div class="pdv-layout">
+      <div class="card pdv-panel">
+        <div class="pdv-type-toggle">
+          <button class="pdv-type-btn active" id="pdv-type-mesa" onclick="setPdvType('mesa')">Mesa</button>
+          <button class="pdv-type-btn" id="pdv-type-balcao" onclick="setPdvType('balcao')">Balcão (sem mesa)</button>
+        </div>
+        <div class="field" id="pdvTableField"><label>Número da mesa</label><input id="pdvTableNumber" type="text" inputmode="numeric" placeholder="Ex.: 5"></div>
+        <div id="pdvCatNav" class="pdv-cat-nav"></div>
+        <div id="pdvProductGrid" class="pdv-product-grid"></div>
+      </div>
+      <div class="card pdv-panel pdv-cart-panel">
+        <h3>Pedido atual</h3>
+        <div id="pdvCartItems" class="pdv-cart-items"></div>
+        <div class="sum-row total" style="margin:14px 0"><span>Total</span><span id="pdvCartTotal">R$ 0,00</span></div>
+        <div class="field"><label>Nome do cliente (opcional)</label><input id="pdvCustomerName" placeholder="Cliente balcão"></div>
+        <div class="field"><label>Telefone (opcional)</label><input id="pdvCustomerPhone" placeholder="(00) 00000-0000"></div>
+        <div class="field">
+          <label>Forma de pagamento</label>
+          <div class="pay-options">
+            <div class="pay-opt active" id="pdv-pay-pix" onclick="selectPdvPayment('pix')">Pix</div>
+            <div class="pay-opt" id="pdv-pay-cartao" onclick="selectPdvPayment('cartao')">Cartão</div>
+            <div class="pay-opt" id="pdv-pay-dinheiro" onclick="selectPdvPayment('dinheiro')">Dinheiro</div>
+          </div>
+        </div>
+        <div class="field hidden" id="pdvTrocoField">
+          <label>Vai pagar com quanto?</label>
+          <input id="pdvTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 (deixe em branco se for o valor exato)">
+        </div>
+        <button class="btn btn-gold btn-block" id="pdvSubmitBtn" onclick="submitPdvOrder()" disabled>Confirmar pedido</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script src="data.js"></script>
+<script>
+let loggedAtdName = "";
+
+function tryAtendenteLogin(){
+  const name = document.getElementById("atdNameInput").value.trim();
+  const pass = document.getElementById("atdPassInput").value;
+  if(pass === STATE.config.adminPassword && name){
+    loggedAtdName = name;
+    finishAtdLogin();
+    return;
+  }
+  const user = STATE.users.find(u=>u.active && u.name.trim().toLowerCase()===name.toLowerCase() && u.password===pass && name);
+  if(user){
+    loggedAtdName = user.name;
+    finishAtdLogin();
+    return;
+  }
+  showToast("Usuário ou senha incorretos.");
+}
+function finishAtdLogin(){
+  sessionStorage.setItem("sd_atd_logged", "1");
+  sessionStorage.setItem("sd_atd_name", loggedAtdName);
+  showAtdShell();
+}
+function showAtdShell(){
+  document.getElementById("atdLogin").style.display = "none";
+  document.getElementById("atdShell").style.display = "block";
+  document.getElementById("loggedAtdName").textContent = loggedAtdName;
+  renderPdvTab();
+}
+function atendenteLogout(){
+  sessionStorage.removeItem("sd_atd_logged");
+  sessionStorage.removeItem("sd_atd_name");
+  location.reload();
+}
+function applyAtdLogo(){
+  const logoUrl = STATE.config.logoImage;
+  [document.getElementById("loginMarkBig"), document.getElementById("brandMarkAtd")].forEach(mark=>{
+    if(!mark) return;
+    if(logoUrl){
+      mark.classList.add("custom-logo");
+      mark.style.backgroundImage = `url('${logoUrl.replace(/'/g,"%27")}')`;
+    } else {
+      mark.classList.remove("custom-logo");
+      mark.style.backgroundImage = "";
+    }
+  });
+}
+
+/* ---------- PDV: idêntico ao usado no painel administrativo ---------- */
+let pdvCart = [];
+let pdvActiveCategory = "Todos";
+let pdvPayment = "pix";
+let pdvType = "mesa";
+
+function renderPdvTab(){
+  renderPdvCatNav();
+  renderPdvProductGrid();
+  renderPdvCartPanel();
+}
+function setPdvType(type){
+  pdvType = type;
+  document.getElementById("pdv-type-mesa").classList.toggle("active", type==="mesa");
+  document.getElementById("pdv-type-balcao").classList.toggle("active", type==="balcao");
+  document.getElementById("pdvTableField").classList.toggle("hidden", type!=="mesa");
+}
+function renderPdvCatNav(){
+  const activeCombos = STATE.combos.filter(c=>c.active);
+  const cats = ["Todos", ...(activeCombos.length ? ["Combos"] : []), ...STATE.config.categories];
+  const el = document.getElementById("pdvCatNav");
+  if(!el) return;
+  el.innerHTML = cats.map(c=>
+    `<button class="cat-chip ${c===pdvActiveCategory?'active':''}" onclick="setPdvCategory('${escapeAttr(c)}')" style="flex-shrink:0">${escapeHtml(c)}</button>`
+  ).join("");
+}
+function setPdvCategory(c){ pdvActiveCategory=c; renderPdvCatNav(); renderPdvProductGrid(); }
+function renderPdvProductGrid(){
+  const grid = document.getElementById("pdvProductGrid");
+  if(!grid) return;
+  let items = [];
+  if(pdvActiveCategory === "Combos"){
+    items = STATE.combos.filter(c=>c.active).map(c=>Object.assign({}, c, {isCombo:true}));
+  } else if(pdvActiveCategory === "Todos"){
+    items = STATE.products.filter(p=>p.active);
+  } else {
+    items = STATE.products.filter(p=>p.active && p.category===pdvActiveCategory);
+  }
+  grid.innerHTML = items.length ? items.map(it=>`
+    <div class="pdv-product-card" onclick="addToPdvCart('${it.id}', ${!!it.isCombo})">
+      <div class="pn">${escapeHtml(it.name)}${it.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
+      <div class="pp">${money(it.price)}</div>
+    </div>
+  `).join("") : `<p class="pdv-empty">Nenhum item nesta categoria.</p>`;
+}
+function addToPdvCart(id, isCombo){
+  const item = isCombo ? STATE.combos.find(x=>x.id===id) : STATE.products.find(x=>x.id===id);
+  if(!item) return;
+  const existing = pdvCart.find(c=>c.productId===id && !!c.isCombo===!!isCombo);
+  if(existing){ existing.qty += 1; }
+  else { pdvCart.push({lineId: uid(), productId:id, name:item.name, price:item.price, qty:1, isCombo:!!isCombo}); }
+  renderPdvCartPanel();
+}
+function changePdvQty(lineId, d){
+  const item = pdvCart.find(c=>c.lineId===lineId);
+  if(!item) return;
+  item.qty += d;
+  if(item.qty<=0) pdvCart = pdvCart.filter(c=>c.lineId!==lineId);
+  renderPdvCartPanel();
+}
+function removePdvItem(lineId){
+  pdvCart = pdvCart.filter(c=>c.lineId!==lineId);
+  renderPdvCartPanel();
+}
+function renderPdvCartPanel(){
+  const itemsEl = document.getElementById("pdvCartItems");
+  const totalEl = document.getElementById("pdvCartTotal");
+  const btn = document.getElementById("pdvSubmitBtn");
+  if(!itemsEl) return;
+  const total = pdvCart.reduce((s,c)=>s+c.price*c.qty,0);
+  itemsEl.innerHTML = pdvCart.length ? pdvCart.map(c=>`
+    <div class="pdv-cart-line">
+      <span class="pl-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</span>
+      <span class="pl-qty">
+        <button onclick="changePdvQty('${c.lineId}',-1)">−</button>
+        ${c.qty}
+        <button onclick="changePdvQty('${c.lineId}',1)">+</button>
+      </span>
+      <button class="pl-remove" onclick="removePdvItem('${c.lineId}')">×</button>
+    </div>
+  `).join("") : `<p class="pdv-empty">Toque nos itens ao lado para adicionar ao pedido.</p>`;
+  if(totalEl) totalEl.textContent = money(total);
+  if(btn) btn.disabled = pdvCart.length===0;
+}
+function selectPdvPayment(p){
+  pdvPayment = p;
+  ["pix","cartao","dinheiro"].forEach(k=>document.getElementById("pdv-pay-"+k).classList.toggle("active", k===p));
+  document.getElementById("pdvTrocoField").classList.toggle("hidden", p!=="dinheiro");
+}
+function submitPdvOrder(){
+  if(!pdvCart.length) return;
+  const sub = pdvCart.reduce((s,c)=>s+c.price*c.qty,0);
+  const tableNumber = pdvType==="mesa" ? document.getElementById("pdvTableNumber").value.trim() : "";
+  if(pdvType==="mesa" && !tableNumber){ showToast("Informe o número da mesa."); return; }
+  let changeFor = null, changeAmount = 0;
+  if(pdvPayment === "dinheiro"){
+    const val = document.getElementById("pdvTrocoPara").value.trim();
+    if(val){
+      changeFor = parseFloat(val);
+      if(isNaN(changeFor) || changeFor < sub){ showToast("O valor pra troco precisa ser maior ou igual ao total."); return; }
+      changeAmount = changeFor - sub;
+    }
+  }
+  const name = document.getElementById("pdvCustomerName").value.trim() || (tableNumber ? "Mesa "+tableNumber : "Cliente balcão");
+  const phone = document.getElementById("pdvCustomerPhone").value.trim();
+  getNextOrderNumber().then(num=>{
+    const code = "#" + String(num).padStart(4,"0");
+    const order = {
+      code, customerName: name, phone, address: "", bairro: "",
+      deliveryType: "balcao",
+      tableNumber: tableNumber || null,
+      location: null,
+      items: pdvCart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:"", isCombo:!!c.isCombo, choices:[]})),
+      subtotal: sub, deliveryFee: 0, total: sub,
+      payment: pdvPayment, changeFor, changeAmount,
+      status: "preparo",
+      createdAt: Date.now(), dateStr: todayStr(), messages: [], courierAlert: null,
+      registeredBy: loggedAtdName
+    };
+    createOrderData(order).then(()=>{
+      showToast(`Pedido ${code} enviado para a fila!`);
+      printOrderTickets(order);
+      pdvCart = [];
+      document.getElementById("pdvTableNumber").value = "";
+      document.getElementById("pdvCustomerName").value = "";
+      document.getElementById("pdvCustomerPhone").value = "";
+      renderPdvCartPanel();
+    });
+  });
+}
+
+initData(function(){
+  applyAtdLogo();
+  document.getElementById("storeNameLabelAtd").textContent = STATE.config.storeName;
+  if(sessionStorage.getItem("sd_atd_logged") === "1"){
+    loggedAtdName = sessionStorage.getItem("sd_atd_name") || "Atendente";
+    showAtdShell();
+  }
+});
+</script>
+</body>
+</html>

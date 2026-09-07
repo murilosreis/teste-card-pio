@@ -52,7 +52,7 @@ let STATE = {
 const STATUS_FLOW = ["preparo","saiu_entrega","entregue"];
 const STATUS_LABEL = {pendente:"Aguardando confirmação", preparo:"Em preparo", saiu_entrega:"Saiu para entrega", entregue:"Entregue", cancelado:"Cancelado"};
 function statusLabelForOrder(order, status){
-  if(status === "saiu_entrega" && order && order.deliveryType === "retirada") return "Pronto para retirada";
+  if(status === "saiu_entrega" && order && (order.deliveryType === "retirada" || order.deliveryType === "balcao")) return "Pronto para retirada";
   return STATUS_LABEL[status];
 }
 const PAY_LABEL = {pix:"Pix", cartao:"Cartão", dinheiro:"Dinheiro"};
@@ -61,6 +61,64 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function money(v){ return "R$ " + (Number(v)||0).toFixed(2).replace(".",","); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function formatDateBR(d){ if(!d) return ""; const parts = d.split("-"); if(parts.length!==3) return d; return parts[2]+"/"+parts[1]+"/"+parts[0]; }
+
+/* ---------- impressão de tickets (usado no painel e na tela de atendentes) ---------- */
+function buildTicketHtml(order, viaLabel, store){
+  const d = new Date(order.createdAt);
+  const time = String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+d.toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
+  const itemsHtml = order.items.map(it=>{
+    let extra = "";
+    if(it.choices && it.choices.length) extra += it.choices.map(c=>`<div class="ticket-sub">- ${escapeHtml(c)}</div>`).join("");
+    if(it.note) extra += `<div class="ticket-sub">Obs: ${escapeHtml(it.note)}</div>`;
+    return `<div class="ticket-item">${it.qty}x ${escapeHtml(it.name)}</div>${extra}`;
+  }).join("");
+  const trocoLine = (order.payment==="dinheiro" && order.changeFor)
+    ? `<div class="ticket-line">Troco p/ ${money(order.changeFor)} (levar ${money(order.changeAmount)})</div>` : "";
+  const isPickup = order.deliveryType === "retirada";
+  const isBalcao = order.deliveryType === "balcao";
+  const tableLine = order.tableNumber ? `<div class="ticket-line"><b>MESA ${escapeHtml(String(order.tableNumber))}</b></div>` : "";
+  const addressLine = isBalcao
+    ? `<div class="ticket-line"><b>${order.tableNumber ? "ATENDIMENTO NA MESA" : "VENDA NO BALCÃO"}</b></div>`
+    : (isPickup
+      ? `<div class="ticket-line"><b>RETIRADA NO LOCAL</b></div>`
+      : `<div class="ticket-line">${escapeHtml(order.address)}${order.bairro?" - "+escapeHtml(order.bairro):""}</div>`);
+  return `
+    <div class="ticket">
+      <div class="ticket-via">Via: ${escapeHtml(viaLabel)}</div>
+      <div class="ticket-store">${escapeHtml(store)}</div>
+      <div class="ticket-code">${order.code}</div>
+      <div class="ticket-line">${time}</div>
+      <div class="ticket-sep"></div>
+      ${tableLine}
+      <div class="ticket-line"><b>${escapeHtml(order.customerName)}</b></div>
+      <div class="ticket-line">${escapeHtml(order.phone)}</div>
+      ${addressLine}
+      <div class="ticket-sep"></div>
+      ${itemsHtml}
+      <div class="ticket-sep"></div>
+      <div class="ticket-line">Subtotal: ${money(order.subtotal)}</div>
+      <div class="ticket-line">Entrega: ${money(order.deliveryFee)}</div>
+      <div class="ticket-line"><b>Total: ${money(order.total)}</b></div>
+      <div class="ticket-line">Pagamento: ${PAY_LABEL[order.payment]||order.payment}</div>
+      ${trocoLine}
+    </div>`;
+}
+function printOrderTickets(order){
+  const area = document.getElementById("printArea");
+  if(!area || !order) return;
+  let vias = (STATE.config.printCopies && STATE.config.printCopies.length) ? STATE.config.printCopies.slice() : ["Via única"];
+  if(order.deliveryType === "retirada" || order.deliveryType === "balcao"){
+    vias = vias.filter(v=>v.toLowerCase().indexOf("entregador") === -1);
+    if(!vias.length) vias = ["Via única"];
+  }
+  const store = STATE.config.storeName || "Loja";
+  area.innerHTML = vias.map(v=>buildTicketHtml(order, v, store)).join('<div class="ticket-pagebreak"></div>');
+  setTimeout(()=>{ window.print(); }, 150);
+}
+function printOrderById(orderId){
+  const order = STATE.orders.find(o=>o.id===orderId);
+  if(order) printOrderTickets(order);
+}
 
 /* ---------- termos legais (LGPD), usado no cardápio e no painel ---------- */
 function openLegalDoc(kind){

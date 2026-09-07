@@ -130,22 +130,27 @@
 }
 canvas{max-width:100%;}
 
-/* impressão de tickets: invisível na tela, só aparece ao mandar imprimir */
-#printArea{display:none;}
-@media print{
-  body *{visibility:hidden;}
-  #printArea, #printArea *{visibility:visible;}
-  #printArea{display:block;position:absolute;top:0;left:0;width:100%;}
-  .ticket{font-family:'JetBrains Mono',monospace;font-size:12px;padding:16px;width:300px;margin:0 auto;color:#000;}
-  .ticket-via{font-weight:700;text-align:center;border:1.5px solid #000;padding:5px;margin-bottom:10px;letter-spacing:.05em;text-transform:uppercase;}
-  .ticket-store{font-weight:700;text-align:center;font-size:14px;}
-  .ticket-code{text-align:center;font-size:17px;font-weight:700;margin:6px 0;}
-  .ticket-line{margin:2px 0;}
-  .ticket-item{margin-top:6px;font-weight:700;}
-  .ticket-sub{margin-left:12px;font-size:11px;}
-  .ticket-sep{border-top:1px dashed #000;margin:10px 0;}
-  .ticket-pagebreak{page-break-after:always;}
-}
+/* PDV / Balcão */
+.pdv-layout{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start;}
+@media(max-width:900px){.pdv-layout{grid-template-columns:1fr;}}
+.pdv-panel{padding:20px 22px;}
+.pdv-type-toggle{display:flex;gap:8px;margin-bottom:16px;}
+.pdv-type-btn{flex:1;padding:11px;border-radius:10px;border:1.5px solid var(--gray-200);background:var(--white);color:var(--ink-soft);font-weight:700;font-size:13.5px;}
+.pdv-type-btn.active{background:var(--purple-700);border-color:var(--purple-700);color:var(--white);}
+.pdv-cat-nav{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px;}
+.pdv-product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;max-height:52vh;overflow-y:auto;padding-right:4px;}
+.pdv-product-card{padding:12px;border-radius:12px;background:var(--gray-50);cursor:pointer;border:1.5px solid transparent;transition:border-color .12s;}
+.pdv-product-card:hover{border-color:var(--purple-500);}
+.pdv-product-card .pn{font-weight:700;font-size:13px;line-height:1.3;}
+.pdv-product-card .pp{font-family:var(--font-mono);color:var(--purple-700);font-size:12.5px;margin-top:6px;}
+.pdv-cart-panel{position:sticky;top:20px;}
+.pdv-cart-items{max-height:32vh;overflow-y:auto;margin-bottom:6px;}
+.pdv-cart-line{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--gray-100);font-size:13px;}
+.pdv-cart-line .pl-name{flex:1;font-weight:600;}
+.pdv-cart-line .pl-qty{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);}
+.pdv-cart-line .pl-qty button{width:22px;height:22px;border-radius:6px;background:var(--gray-100);font-weight:700;}
+.pdv-cart-line .pl-remove{color:var(--red);font-weight:700;width:22px;height:22px;border-radius:6px;background:var(--red-100);}
+.pdv-empty{text-align:center;color:var(--ink-soft);font-size:13px;padding:24px 0;}
 </style>
 </head>
 <body>
@@ -180,6 +185,7 @@ canvas{max-width:100%;}
       <div class="brand"><span class="mark" id="brandMarkAdmin"></span><span class="brand-name" id="storeNameLabelAdmin">Sabor Direto</span></div>
       <div class="logged-as" id="loggedAsLabel">Logado como Administrador</div>
       <button class="nav-item" data-tab="overview" onclick="setAdminTab('overview')"><span class="badge-diamond"></span>Visão geral</button>
+      <button class="nav-item" data-tab="pdv" onclick="setAdminTab('pdv')"><span class="badge-diamond"></span>PDV / Balcão</button>
       <button class="nav-item" data-tab="orders" onclick="setAdminTab('orders')"><span class="badge-diamond"></span>Pedidos<span class="nav-alert-dot hidden" id="ordersAlertDot"></span></button>
       <button class="nav-item" data-tab="report" onclick="setAdminTab('report')"><span class="badge-diamond"></span>Relatório</button>
       <button class="nav-item" data-tab="menu" onclick="setAdminTab('menu')"><span class="badge-diamond"></span>Cardápio</button>
@@ -248,6 +254,41 @@ canvas{max-width:100%;}
               <thead><tr><th>Código</th><th>Data</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Status</th></tr></thead>
               <tbody id="reportOrdersBody"></tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-pdv" class="hidden">
+        <div class="admin-topbar"><h1>PDV / Balcão</h1></div>
+        <div class="pdv-layout">
+          <div class="card pdv-panel">
+            <div class="pdv-type-toggle">
+              <button class="pdv-type-btn active" id="pdv-type-mesa" onclick="setPdvType('mesa')">Mesa</button>
+              <button class="pdv-type-btn" id="pdv-type-balcao" onclick="setPdvType('balcao')">Balcão (sem mesa)</button>
+            </div>
+            <div class="field" id="pdvTableField"><label>Número da mesa</label><input id="pdvTableNumber" type="text" inputmode="numeric" placeholder="Ex.: 5"></div>
+            <div id="pdvCatNav" class="pdv-cat-nav"></div>
+            <div id="pdvProductGrid" class="pdv-product-grid"></div>
+          </div>
+          <div class="card pdv-panel pdv-cart-panel">
+            <h3>Pedido atual</h3>
+            <div id="pdvCartItems" class="pdv-cart-items"></div>
+            <div class="sum-row total" style="margin:14px 0"><span>Total</span><span id="pdvCartTotal">R$ 0,00</span></div>
+            <div class="field"><label>Nome do cliente (opcional)</label><input id="pdvCustomerName" placeholder="Cliente balcão"></div>
+            <div class="field"><label>Telefone (opcional)</label><input id="pdvCustomerPhone" placeholder="(00) 00000-0000"></div>
+            <div class="field">
+              <label>Forma de pagamento</label>
+              <div class="pay-options">
+                <div class="pay-opt active" id="pdv-pay-pix" onclick="selectPdvPayment('pix')">Pix</div>
+                <div class="pay-opt" id="pdv-pay-cartao" onclick="selectPdvPayment('cartao')">Cartão</div>
+                <div class="pay-opt" id="pdv-pay-dinheiro" onclick="selectPdvPayment('dinheiro')">Dinheiro</div>
+              </div>
+            </div>
+            <div class="field hidden" id="pdvTrocoField">
+              <label>Vai pagar com quanto?</label>
+              <input id="pdvTrocoPara" type="number" step="0.01" min="0" placeholder="Ex.: 50 (deixe em branco se for o valor exato)">
+            </div>
+            <button class="btn btn-gold btn-block" id="pdvSubmitBtn" onclick="submitPdvOrder()" disabled>Confirmar pedido</button>
           </div>
         </div>
       </section>
@@ -505,7 +546,7 @@ function setSyncStatus(on){
 
 function setAdminTab(tab){
   adminTab = tab;
-  ["overview","orders","menu","complements","combos","promotions","users","settings","ajuda","report"].forEach(t=>{
+  ["overview","pdv","orders","menu","complements","combos","promotions","users","settings","ajuda","report"].forEach(t=>{
     document.getElementById("tab-"+t).classList.toggle("hidden", t!==tab);
   });
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.tab===tab));
@@ -538,6 +579,7 @@ function renderAdmin(){
   setSyncStatus(useFirebase && !firestoreUnavailable);
   document.getElementById("storeNameLabelAdmin").textContent = STATE.config.storeName;
   if(adminTab==="overview") renderOverview();
+  if(adminTab==="pdv") renderPdvTab();
   if(adminTab==="orders") renderOrders();
   if(adminTab==="menu") renderMenuAdmin();
   if(adminTab==="complements") renderComplementsAdmin();
@@ -815,57 +857,134 @@ function drawReportChart(labels, values){
   });
 }
 
-/* ---------- impressão de tickets ---------- */
-function buildTicketHtml(order, viaLabel, store){
-  const d = new Date(order.createdAt);
-  const time = String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+d.toLocaleTimeString("pt-BR",{hour:'2-digit',minute:'2-digit'});
-  const itemsHtml = order.items.map(it=>{
-    let extra = "";
-    if(it.choices && it.choices.length) extra += it.choices.map(c=>`<div class="ticket-sub">- ${escapeHtml(c)}</div>`).join("");
-    if(it.note) extra += `<div class="ticket-sub">Obs: ${escapeHtml(it.note)}</div>`;
-    return `<div class="ticket-item">${it.qty}x ${escapeHtml(it.name)}</div>${extra}`;
-  }).join("");
-  const trocoLine = (order.payment==="dinheiro" && order.changeFor)
-    ? `<div class="ticket-line">Troco p/ ${money(order.changeFor)} (levar ${money(order.changeAmount)})</div>` : "";
-  const isPickup = order.deliveryType === "retirada";
-  const addressLine = isPickup
-    ? `<div class="ticket-line"><b>RETIRADA NO LOCAL</b></div>`
-    : `<div class="ticket-line">${escapeHtml(order.address)}${order.bairro?" - "+escapeHtml(order.bairro):""}</div>`;
-  return `
-    <div class="ticket">
-      <div class="ticket-via">Via: ${escapeHtml(viaLabel)}</div>
-      <div class="ticket-store">${escapeHtml(store)}</div>
-      <div class="ticket-code">${order.code}</div>
-      <div class="ticket-line">${time}</div>
-      <div class="ticket-sep"></div>
-      <div class="ticket-line"><b>${escapeHtml(order.customerName)}</b></div>
-      <div class="ticket-line">${escapeHtml(order.phone)}</div>
-      ${addressLine}
-      <div class="ticket-sep"></div>
-      ${itemsHtml}
-      <div class="ticket-sep"></div>
-      <div class="ticket-line">Subtotal: ${money(order.subtotal)}</div>
-      <div class="ticket-line">Entrega: ${money(order.deliveryFee)}</div>
-      <div class="ticket-line"><b>Total: ${money(order.total)}</b></div>
-      <div class="ticket-line">Pagamento: ${PAY_LABEL[order.payment]||order.payment}</div>
-      ${trocoLine}
-    </div>`;
+/* ---------- PDV / Balcão: pedido criado presencialmente pelo administrativo ---------- */
+let pdvCart = [];
+let pdvActiveCategory = "Todos";
+let pdvPayment = "pix";
+let pdvType = "mesa";
+
+function renderPdvTab(){
+  renderPdvCatNav();
+  renderPdvProductGrid();
+  renderPdvCartPanel();
 }
-function printOrderTickets(order){
-  const area = document.getElementById("printArea");
-  if(!area || !order) return;
-  let vias = (STATE.config.printCopies && STATE.config.printCopies.length) ? STATE.config.printCopies.slice() : ["Via única"];
-  if(order.deliveryType === "retirada"){
-    vias = vias.filter(v=>v.toLowerCase().indexOf("entregador") === -1);
-    if(!vias.length) vias = ["Via única"];
+function setPdvType(type){
+  pdvType = type;
+  document.getElementById("pdv-type-mesa").classList.toggle("active", type==="mesa");
+  document.getElementById("pdv-type-balcao").classList.toggle("active", type==="balcao");
+  document.getElementById("pdvTableField").classList.toggle("hidden", type!=="mesa");
+}
+function renderPdvCatNav(){
+  const activeCombos = STATE.combos.filter(c=>c.active);
+  const cats = ["Todos", ...(activeCombos.length ? ["Combos"] : []), ...STATE.config.categories];
+  const el = document.getElementById("pdvCatNav");
+  if(!el) return;
+  el.innerHTML = cats.map(c=>
+    `<button class="cat-chip ${c===pdvActiveCategory?'active':''}" onclick="setPdvCategory('${escapeAttr(c)}')" style="flex-shrink:0">${escapeHtml(c)}</button>`
+  ).join("");
+}
+function setPdvCategory(c){ pdvActiveCategory=c; renderPdvCatNav(); renderPdvProductGrid(); }
+function renderPdvProductGrid(){
+  const grid = document.getElementById("pdvProductGrid");
+  if(!grid) return;
+  let items = [];
+  if(pdvActiveCategory === "Combos"){
+    items = STATE.combos.filter(c=>c.active).map(c=>Object.assign({}, c, {isCombo:true}));
+  } else if(pdvActiveCategory === "Todos"){
+    items = STATE.products.filter(p=>p.active);
+  } else {
+    items = STATE.products.filter(p=>p.active && p.category===pdvActiveCategory);
   }
-  const store = STATE.config.storeName || "Loja";
-  area.innerHTML = vias.map(v=>buildTicketHtml(order, v, store)).join('<div class="ticket-pagebreak"></div>');
-  setTimeout(()=>{ window.print(); }, 150);
+  grid.innerHTML = items.length ? items.map(it=>`
+    <div class="pdv-product-card" onclick="addToPdvCart('${it.id}', ${!!it.isCombo})">
+      <div class="pn">${escapeHtml(it.name)}${it.isCombo?'<span class="combo-tag">Combo</span>':''}</div>
+      <div class="pp">${money(it.price)}</div>
+    </div>
+  `).join("") : `<p class="pdv-empty">Nenhum item nesta categoria.</p>`;
 }
-function printOrderById(orderId){
-  const order = STATE.orders.find(o=>o.id===orderId);
-  if(order) printOrderTickets(order);
+function addToPdvCart(id, isCombo){
+  const item = isCombo ? STATE.combos.find(x=>x.id===id) : STATE.products.find(x=>x.id===id);
+  if(!item) return;
+  const existing = pdvCart.find(c=>c.productId===id && !!c.isCombo===!!isCombo);
+  if(existing){ existing.qty += 1; }
+  else { pdvCart.push({lineId: uid(), productId:id, name:item.name, price:item.price, qty:1, isCombo:!!isCombo}); }
+  renderPdvCartPanel();
+}
+function changePdvQty(lineId, d){
+  const item = pdvCart.find(c=>c.lineId===lineId);
+  if(!item) return;
+  item.qty += d;
+  if(item.qty<=0) pdvCart = pdvCart.filter(c=>c.lineId!==lineId);
+  renderPdvCartPanel();
+}
+function removePdvItem(lineId){
+  pdvCart = pdvCart.filter(c=>c.lineId!==lineId);
+  renderPdvCartPanel();
+}
+function renderPdvCartPanel(){
+  const itemsEl = document.getElementById("pdvCartItems");
+  const totalEl = document.getElementById("pdvCartTotal");
+  const btn = document.getElementById("pdvSubmitBtn");
+  if(!itemsEl) return;
+  const total = pdvCart.reduce((s,c)=>s+c.price*c.qty,0);
+  itemsEl.innerHTML = pdvCart.length ? pdvCart.map(c=>`
+    <div class="pdv-cart-line">
+      <span class="pl-name">${escapeHtml(c.name)}${c.isCombo?'<span class="combo-tag">Combo</span>':''}</span>
+      <span class="pl-qty">
+        <button onclick="changePdvQty('${c.lineId}',-1)">−</button>
+        ${c.qty}
+        <button onclick="changePdvQty('${c.lineId}',1)">+</button>
+      </span>
+      <button class="pl-remove" onclick="removePdvItem('${c.lineId}')">×</button>
+    </div>
+  `).join("") : `<p class="pdv-empty">Toque nos itens ao lado para adicionar ao pedido.</p>`;
+  if(totalEl) totalEl.textContent = money(total);
+  if(btn) btn.disabled = pdvCart.length===0;
+}
+function selectPdvPayment(p){
+  pdvPayment = p;
+  ["pix","cartao","dinheiro"].forEach(k=>document.getElementById("pdv-pay-"+k).classList.toggle("active", k===p));
+  document.getElementById("pdvTrocoField").classList.toggle("hidden", p!=="dinheiro");
+}
+function submitPdvOrder(){
+  if(!pdvCart.length) return;
+  const sub = pdvCart.reduce((s,c)=>s+c.price*c.qty,0);
+  const tableNumber = pdvType==="mesa" ? document.getElementById("pdvTableNumber").value.trim() : "";
+  if(pdvType==="mesa" && !tableNumber){ showToast("Informe o número da mesa."); return; }
+  let changeFor = null, changeAmount = 0;
+  if(pdvPayment === "dinheiro"){
+    const val = document.getElementById("pdvTrocoPara").value.trim();
+    if(val){
+      changeFor = parseFloat(val);
+      if(isNaN(changeFor) || changeFor < sub){ showToast("O valor pra troco precisa ser maior ou igual ao total."); return; }
+      changeAmount = changeFor - sub;
+    }
+  }
+  const name = document.getElementById("pdvCustomerName").value.trim() || (tableNumber ? "Mesa "+tableNumber : "Cliente balcão");
+  const phone = document.getElementById("pdvCustomerPhone").value.trim();
+  getNextOrderNumber().then(num=>{
+    const code = "#" + String(num).padStart(4,"0");
+    const order = {
+      code, customerName: name, phone, address: "", bairro: "",
+      deliveryType: "balcao",
+      tableNumber: tableNumber || null,
+      location: null,
+      items: pdvCart.map(c=>({name:c.name, qty:c.qty, price:c.price, note:"", isCombo:!!c.isCombo, choices:[]})),
+      subtotal: sub, deliveryFee: 0, total: sub,
+      payment: pdvPayment, changeFor, changeAmount,
+      status: "preparo",
+      createdAt: Date.now(), dateStr: todayStr(), messages: [], courierAlert: null
+    };
+    createOrderData(order).then(()=>{
+      showToast(`Pedido ${code} enviado para a fila!`);
+      printOrderTickets(order);
+      pdvCart = [];
+      document.getElementById("pdvTableNumber").value = "";
+      document.getElementById("pdvCustomerName").value = "";
+      document.getElementById("pdvCustomerPhone").value = "";
+      renderPdvCartPanel();
+    });
+  });
 }
 
 function renderOrders(){
@@ -895,21 +1014,28 @@ function renderOrders(){
       if(nextIdx>=0 && nextIdx<STATUS_FLOW.length-1){ nextStatus = STATUS_FLOW[nextIdx+1]; nextLabel = "Marcar "+statusLabelForOrder(o,nextStatus).toLowerCase(); }
     }
     const isPickup = o.deliveryType === "retirada";
+    const isBalcao = o.deliveryType === "balcao";
+    const noDelivery = isPickup || isBalcao;
+    const typeTag = isPickup
+      ? '<span class="combo-tag" style="background:var(--purple-500);color:#fff">RETIRADA</span>'
+      : (isBalcao
+        ? `<span class="combo-tag" style="background:var(--teal);color:#fff">${o.tableNumber ? "MESA "+escapeHtml(String(o.tableNumber)) : "BALCÃO"}</span>`
+        : '<span class="combo-tag" style="background:var(--orange);color:#fff">ENTREGA</span>');
     return `<div class="card order-card ${o.status==='pendente'?'is-pendente':''}">
       <div class="oc-code">${o.code}</div>
       <div class="oc-main">
-        <div class="oc-name">${escapeHtml(o.customerName)}${isPickup?' <span class="combo-tag" style="background:var(--purple-500);color:#fff">RETIRADA</span>':''}</div>
-        <div class="oc-meta">${time} · ${escapeHtml(o.phone)} · ${PAY_LABEL[o.payment]||o.payment}</div>
+        <div class="oc-name">${escapeHtml(o.customerName)} ${typeTag}</div>
+        <div class="oc-meta">${time} · ${o.phone ? escapeHtml(o.phone)+' · ' : ''}${PAY_LABEL[o.payment]||o.payment}</div>
         <div class="oc-items">${itemsTxt}</div>
-        <div class="oc-meta" style="margin-top:4px">${isPickup ? "Retirada no local" : escapeHtml(o.address)}</div>
+        <div class="oc-meta" style="margin-top:4px">${isBalcao ? (o.tableNumber ? "Atendimento na mesa " + escapeHtml(String(o.tableNumber)) : "Venda no balcão") : (isPickup ? "Retirada no local" : escapeHtml(o.address))}</div>
         ${o.payment==="dinheiro" && o.changeFor ? `<div class="troco-highlight">Troco para ${money(o.changeFor)}: levar <b>${money(o.changeAmount)}</b> de troco</div>` : ""}
         ${o.courierDelivered && o.status!=="entregue" ? `<div class="troco-highlight" style="background:var(--teal-100);color:var(--teal)">Entregador confirmou a entrega, falta você fechar o pedido</div>` : ""}
-        ${!isPickup && o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+        ${!noDelivery && o.location ? `<div style="margin-top:8px;display:flex;gap:6px;align-items:center">
           <a class="btn btn-ghost btn-sm" href="${buildMapsUrl(o.location)}" target="_blank">Ver no mapa</a>
           <button class="btn btn-ghost btn-sm" onclick="copyMapsLink(${o.location.lat},${o.location.lng})" title="Copiar link do mapa">Copiar link</button>
         </div>` : ""}
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-          ${!isPickup && o.status==="saiu_entrega" ? `<button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">Compartilhar com entregador</button>` : ""}
+          ${!noDelivery && o.status==="saiu_entrega" ? `<button class="btn btn-ghost btn-sm" onclick="copyDeliveryLink('${o.id}')">Compartilhar com entregador</button>` : ""}
           <button class="btn btn-ghost btn-sm" onclick="printOrderById('${o.id}')">Imprimir</button>
         </div>
       </div>
