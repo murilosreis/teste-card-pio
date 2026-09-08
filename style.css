@@ -209,7 +209,6 @@ img{max-width:100%;display:block;}
 .choice-opt input{flex-shrink:0;}
 .choice-opt span:first-of-type{flex:1;}
 .choice-opt-price{font-family:var(--font-mono);color:var(--purple-700);font-size:12px;font-weight:600;}
-.customize-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.95);color:var(--purple-700);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:2;}
 
 /* forma de pagamento (checkout do cliente, PDV, atendentes) */
 .pay-options{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px;}

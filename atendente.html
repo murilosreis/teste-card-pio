@@ -189,10 +189,8 @@ function renderPdvProductGrid(){
     items = STATE.products.filter(p=>p.active && p.category===pdvActiveCategory);
   }
   grid.innerHTML = items.length ? items.map(it=>{
-    const hasOptions = (it.complementIds && it.complementIds.length) || (it.choiceGroups && it.choiceGroups.some(g=>g.productIds && g.productIds.length));
     return `
-    <div class="pdv-product-card" style="position:relative" onclick="addToPdvCart('${it.id}', ${!!it.isCombo})">
-      ${hasOptions ? `<button class="customize-btn" onclick="event.stopPropagation();openPdvItemDetail('${it.id}', ${!!it.isCombo})">Personalizar</button>` : ""}
+    <div class="pdv-product-card" onclick="openPdvItemDetail('${it.id}', ${!!it.isCombo})">
       <div class="pdv-product-img">${it.image ? `<img src="${escapeAttr(it.image)}" alt="">` : `<div class="ph">Sem foto</div>`}</div>
       <div class="pdv-product-body">
         <div class="pn">${escapeHtml(it.name)}${it.isCombo?'<span class="combo-tag">Combo</span>':''}</div>

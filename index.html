@@ -272,9 +272,7 @@ function comboSectionHtml(combos){
 function emptyStateHtml(msg){ return `<div class="empty-state"><span class="badge-diamond"></span><div>${escapeHtml(msg)}</div></div>`; }
 
 function productCardHtml(p){
-  const hasOptions = (p.complementIds && p.complementIds.length > 0);
-  return `<div class="product-card" style="position:relative" onclick="quickAdd('${p.id}')">
-    ${hasOptions ? `<button class="customize-btn" onclick="event.stopPropagation();openItemDetail('${p.id}','product')">Personalizar</button>` : ""}
+  return `<div class="product-card" onclick="openItemDetail('${p.id}','product')">
     ${p.image ? `<img class="product-img" src="${escapeAttr(p.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(p.name)}</div>
@@ -287,10 +285,7 @@ function productCardHtml(p){
   </div>`;
 }
 function comboCardHtml(c){
-  const hasRequiredChoice = (c.choiceGroups||[]).some(g=>g.required && g.productIds && g.productIds.length);
-  const hasAnyChoice = (c.choiceGroups||[]).some(g=>g.productIds && g.productIds.length);
-  return `<div class="product-card" style="position:relative" onclick="${hasRequiredChoice ? `openItemDetail('${c.id}','combo')` : `quickAddCombo('${c.id}')`}">
-    ${(!hasRequiredChoice && hasAnyChoice) ? `<button class="customize-btn" onclick="event.stopPropagation();openItemDetail('${c.id}','combo')">Personalizar</button>` : ""}
+  return `<div class="product-card" onclick="openItemDetail('${c.id}','combo')">
     ${c.image ? `<img class="product-img" src="${escapeAttr(c.image)}" alt="">` : `<div class="product-img placeholder">Sem foto</div>`}
     <div class="product-body">
       <div class="product-name">${escapeHtml(c.name)}<span class="combo-tag">Combo</span></div>
